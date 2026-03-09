@@ -193,7 +193,7 @@ function App() {
 
   return (
     <div className="flex h-screen w-full bg-zinc-950 text-white font-sans selection:bg-emerald-500 selection:text-white relative">
-      <aside className="w-64 bg-zinc-900/50 border-r border-zinc-800 flex flex-col p-6 backdrop-blur-xl shrink-0 z-10">
+      <aside className="hidden md:flex w-64 bg-zinc-900/50 border-r border-zinc-800 flex-col p-6 backdrop-blur-xl shrink-0 z-10">
         <div className="mb-10 flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg"><span className="text-xl font-black text-white">C</span></div>
           <h2 className="text-2xl font-black text-white">Coach<span className="text-blue-500">board</span></h2>
@@ -213,7 +213,7 @@ function App() {
         </button>
       </aside>
 
-      <main className="flex-1 overflow-y-auto p-6 lg:p-8 w-full relative">
+      <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 w-full relative pb-24 md:pb-8">
         <header className="mb-6 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
           <div>
             <p className="text-emerald-400 font-medium mb-1">Tu imperio te espera</p>
@@ -384,6 +384,24 @@ function App() {
           </div>
         </div>
       )}
+    
+    {/* 📱 MENÚ INFERIOR (SOLO CELULARES) */}
+    {usuarioActual && (
+     <nav className="md:hidden fixed bottom-0 left-0 w-full bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 flex justify-around items-center p-3 z-50 pb-safe">
+       <button onClick={() => { setVistaActiva('inicio'); setClienteSeleccionado(null); }} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${vistaActiva === 'inicio' ? 'text-emerald-400' : 'text-zinc-500'}`}>
+         <span className="text-xl">🏠</span>
+         <span className="text-[10px] font-bold">Inicio</span>
+       </button>
+       <button onClick={() => { setVistaActiva('clientes'); setClienteSeleccionado(null); }} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${vistaActiva === 'clientes' ? 'text-emerald-400' : 'text-zinc-500'}`}>
+         <span className="text-xl">👥</span>
+         <span className="text-[10px] font-bold">Clientes</span>
+       </button>
+       <button onClick={() => { setVistaActiva('rutinas'); setClienteSeleccionado(null); }} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${(vistaActiva === 'rutinas' || vistaActiva === 'constructor') ? 'text-blue-400' : 'text-zinc-500'}`}>
+         <span className="text-xl">📋</span>
+         <span className="text-[10px] font-bold">Rutinas</span>
+       </button>
+     </nav>
+   )}
     </div>
   )
 }
