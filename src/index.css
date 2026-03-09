@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+body {
+  background-color: #09090b; /* Fondo zinc-950 ultra oscuro */
+  color: white;
+  margin: 0;
+}
