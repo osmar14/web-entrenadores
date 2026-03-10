@@ -32,7 +32,7 @@ export default function Clientes({
 
   const cargarExpediente = async (cliente_id) => {
     try {
-      const res = await fetch(`http://localhost:3000/api/notas/${cliente_id}`);
+      const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/notas/${cliente_id}`);
       const datos = await res.json();
       setNotasCliente(datos);
     } catch (error) {
@@ -51,7 +51,7 @@ export default function Clientes({
     if (!usuarioActual) return mostrarAlerta("Error de sesión", "error");
     
     try {
-      const res = await fetch('http://localhost:3000/api/notas', {
+      const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/notas', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -80,7 +80,7 @@ export default function Clientes({
     if (!usuarioActual) return mostrarAlerta("Error de sesión", "error");
 
     try {
-      const res = await fetch('http://localhost:3000/api/clientes', {
+      const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/clientes', {
         method: 'POST', 
         headers: { 
           'Content-Type': 'application/json',

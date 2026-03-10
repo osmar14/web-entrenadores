@@ -19,7 +19,7 @@ export default function Inicio({ totalClientes, totalRutinas, usuarioActual, lis
     if (!usuarioActual) return;
     const cargarDashboard = async () => {
       try {
-        const res = await fetch('http://localhost:3000/api/dashboard', {
+        const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/dashboard', {
           headers: { 'Content-Type': 'application/json', 'entrenador-email': usuarioActual.email }
         });
         const data = await res.json();
@@ -62,7 +62,7 @@ export default function Inicio({ totalClientes, totalRutinas, usuarioActual, lis
     if (!clienteEditando) return;
     try {
       const diasString = diasEditando.join(','); // Lo volvemos a hacer texto para la BD
-      const res = await fetch(`http://localhost:3000/api/clientes/${clienteEditando.id}`, {
+      const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/clientes/${clienteEditando.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'entrenador-email': usuarioActual.email },
         body: JSON.stringify({ dias_entrenamiento: diasString })

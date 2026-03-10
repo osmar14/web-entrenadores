@@ -22,10 +22,10 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
 
   const cargarDatosProgreso = async () => {
     try {
-      const resEjercicios = await fetch(`http://localhost:3000/api/rutina-ejercicios/${rutina.id}`);
+      const resEjercicios = await fetch(`https://backend-entrenadores-production.up.railway.app/api/rutina-ejercicios/${rutina.id}`);
       const datosEjercicios = await resEjercicios.json();
 
-      const resHistorial = await fetch(`http://localhost:3000/api/progreso/${cliente.id}/${rutina.id}`);
+      const resHistorial = await fetch(`https://backend-entrenadores-production.up.railway.app/api/progreso/${cliente.id}/${rutina.id}`);
       const datosHistorial = await resHistorial.json();
       setHistorialCliente(datosHistorial);
 
@@ -123,7 +123,7 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
     if (registrosAEnviar.length === 0) return mostrarAlerta("No anotaste ningún dato nuevo", "error");
 
     try {
-      const res = await fetch('http://localhost:3000/api/progreso', {
+      const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/progreso', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cliente_id: cliente.id, rutina_id: rutina.id, registros: registrosAEnviar })
       });

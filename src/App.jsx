@@ -62,13 +62,13 @@ function App() {
       'entrenador-email': usuarioActual.email 
     };
 
-    fetch('http://localhost:3000/api/clientes', { headers: headersSeguros })
+    fetch('https://backend-entrenadores-production.up.railway.app/api/clientes', { headers: headersSeguros })
       .then(res => res.json())
       .then(datos => {
           setTotalClientes(datos.length); setListaClientes(datos); 
       }).catch(e => console.error(e));
 
-    fetch('http://localhost:3000/api/rutinas', { headers: headersSeguros })
+    fetch('https://backend-entrenadores-production.up.railway.app/api/rutinas', { headers: headersSeguros })
       .then(res => res.json())
       .then(datos => {
           setTodasLasRutinas(datos); 
@@ -76,7 +76,7 @@ function App() {
           setTotalRutinas(plantillas.length); setListaRutinas(plantillas); 
       }).catch(e => console.error(e));
 
-    fetch('http://localhost:3000/api/ejercicios')
+    fetch('https://backend-entrenadores-production.up.railway.app/api/ejercicios')
       .then(res => res.json())
       .then(datos => setCatalogoEjercicios(datos))
       .catch(e => console.error(e));
@@ -90,7 +90,7 @@ function App() {
 
   const handleClonarRutina = async (plantilla_id, cliente_id) => {
     try {
-      const res = await fetch('http://localhost:3000/api/rutinas/clonar', {
+      const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/rutinas/clonar', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plantilla_id, cliente_id })
       });
       if (res.ok) { mostrarAlerta("Plan asignado exitosamente al cliente 🪄", "exito"); cargarDatos(); } 
@@ -102,7 +102,7 @@ function App() {
       mensaje: "¿Estás seguro de eliminar este plan? Esta acción destruirá todos los datos y no se puede deshacer.",
       onConfirm: async () => {
         try {
-          const res = await fetch(`http://localhost:3000/api/rutinas/${rutina_id}`, { method: 'DELETE' });
+          const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/rutinas/${rutina_id}`, { method: 'DELETE' });
           if (res.ok) { mostrarAlerta("Plan eliminado con éxito 🗑️", "exito"); cargarDatos(); }
         } catch (e) { console.error(e); }
         setConfirmacion(null); 
@@ -115,7 +115,7 @@ function App() {
     setVistaActiva('constructor');
     
     try {
-      const res = await fetch(`http://localhost:3000/api/rutina-ejercicios/${rutina.id}`, {
+      const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/rutina-ejercicios/${rutina.id}`, {
         headers: {
           'Content-Type': 'application/json',
           'entrenador-email': usuarioActual?.email || ''
@@ -151,7 +151,7 @@ function App() {
   const handleGuardarRutina = async () => {
     if (!nuevaRutina.nombre) return mostrarAlerta("¡El nombre de la plantilla es obligatorio!", "error");
     try {
-      const res = await fetch('http://localhost:3000/api/rutinas', { 
+      const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/rutinas', { 
         method: 'POST', 
         headers: { 
           'Content-Type': 'application/json',
@@ -165,7 +165,7 @@ function App() {
 
   const handleGuardarPlanDeVuelo = async () => {
     try {
-      const res = await fetch('http://localhost:3000/api/rutina-ejercicios', {
+      const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/rutina-ejercicios', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rutina_id: rutinaSeleccionada.id, ejercicios: ejerciciosEnRutina })
       });
       if (res.ok) { mostrarAlerta("¡Plan de vuelo guardado en la bóveda! 🚀", "exito"); setVistaActiva(rutinaSeleccionada.cliente_id ? 'clientes' : 'rutinas'); }
