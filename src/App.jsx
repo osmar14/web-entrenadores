@@ -62,26 +62,45 @@ function App() {
       'entrenador-email': usuarioActual.email 
     };
 
+    // 1. Cargar Clientes
     fetch('https://backend-entrenadores-production.up.railway.app/api/clientes', { headers: headersSeguros })
       .then(res => res.json())
       .then(datos => {
-          setTotalClientes(datos.length); setListaClientes(datos); 
-      }).catch(e => console.error(e));
+          if (Array.isArray(datos)) {
+              setTotalClientes(datos.length); 
+              setListaClientes(datos); 
+          } else {
+              console.error("Error del backend en Clientes:", datos);
+          }
+      }).catch(e => console.error("Fallo la conexión de clientes:", e));
 
+    // 2. Cargar Rutinas (Aquí estaba el error de pantalla negra)
     fetch('https://backend-entrenadores-production.up.railway.app/api/rutinas', { headers: headersSeguros })
       .then(res => res.json())
       .then(datos => {
-          setTodasLasRutinas(datos); 
-          const plantillas = datos.filter(r => r.es_plantilla === 1); 
-          setTotalRutinas(plantillas.length); setListaRutinas(plantillas); 
-      }).catch(e => console.error(e));
+          // ESCUDO: Solo filtramos si realmente nos mandaron una lista
+          if (Array.isArray(datos)) {
+              setTodasLasRutinas(datos); 
+              const plantillas = datos.filter(r => r.es_plantilla === 1); 
+              setTotalRutinas(plantillas.length); 
+              setListaRutinas(plantillas); 
+          } else {
+              console.error("Error del backend en Rutinas:", datos);
+              // Si da error, mostramos la alerta en la pantalla
+              mostrarAlerta(datos.error || "Error de permisos", "error");
+          }
+      }).catch(e => console.error("Fallo la conexión de rutinas:", e));
 
+    // 3. Cargar Ejercicios
     fetch('https://backend-entrenadores-production.up.railway.app/api/ejercicios')
       .then(res => res.json())
-      .then(datos => setCatalogoEjercicios(datos))
-      .catch(e => console.error(e));
+      .then(datos => {
+          if (Array.isArray(datos)) {
+              setCatalogoEjercicios(datos);
+          }
+      }).catch(e => console.error(e));
   }
-
+  
   useEffect(() => { 
     if (usuarioActual) {
       cargarDatos();
