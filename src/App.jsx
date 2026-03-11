@@ -79,6 +79,8 @@ function App() {
               const plantillas = datos.filter(r => r.es_plantilla === 1); 
               setTotalRutinas(plantillas.length); 
               setListaRutinas(plantillas); 
+          } else {
+              mostrarAlerta(datos.error || "Error de permisos", "error");
           }
       }).catch(e => console.error(e));
 
@@ -113,7 +115,7 @@ function App() {
             method: 'DELETE',
             headers: { 'usuario-email': usuarioActual.email }
           });
-          if (res.ok) { mostrarAlerta("Plan eliminado con éxito 🗑️", "exito"); cargarDatos(); }
+          if (res.ok) { mostrarAlerta("Plan eliminado con éxito 🗑️", "exito"); setVistaActiva('rutinas'); cargarDatos(); }
         } catch (e) { console.error(e); }
         setConfirmacion(null); 
       }
@@ -137,7 +139,7 @@ function App() {
           series_objetivo: e.series_objetivo, 
           reps_objetivo: e.reps_objetivo, 
           dia_nombre: e.dia_nombre,
-          rir_objetivo: e.rir_objetivo || '' // 🌟 NUEVO
+          rir_objetivo: e.rir_objetivo || ''
         }));
         setEjerciciosEnRutina(ejerciciosRecuperados);
         const diasUnicos = [...new Set(ejerciciosRecuperados.map(e => e.dia_nombre))];
@@ -161,10 +163,9 @@ function App() {
         headers: { 'Content-Type': 'application/json', 'usuario-email': usuarioActual.email }, 
         body: JSON.stringify(nuevaRutina) 
       });
-      const data = await res.json(); // Leemos la respuesta
+      const data = await res.json(); 
       
       if (res.ok) { 
-        // 🌟 CORRECCIÓN BUG: Guardamos el ID que nos dio el backend para no olvidarlo
         setNuevaRutina({ ...nuevaRutina, id: data.id }); 
         setPasoModal('exito'); 
         cargarDatos(); 
@@ -189,7 +190,7 @@ function App() {
   const quitarDelConstructor = (id_unico) => setEjerciciosEnRutina(ejerciciosEnRutina.filter(e => e.id_unico !== id_unico))
   const actualizarEjercicio = (id_unico, campo, valor) => setEjerciciosEnRutina(ejerciciosEnRutina.map(e => e.id_unico === id_unico ? { ...e, [campo]: valor } : e))
   
-  // 🌟 NUEVO: Días personalizados
+  // MÉTODOS DE DÍAS PERSONALIZADOS
   const agregarNuevoDia = () => { 
     const nuevoNombre = prompt("Nombre de la sesión (ej. Pecho, Pierna, Día 1):");
     if (!nuevoNombre || nuevoNombre.trim() === "") return;
@@ -197,6 +198,27 @@ function App() {
     
     setDiasPlan([...diasPlan, nuevoNombre.trim()]); 
     setDiaActivo(nuevoNombre.trim()); 
+  }
+
+  const renombrarDiaActivo = () => {
+    const nuevoNombre = prompt(`Renombrar "${diaActivo}" a:`, diaActivo);
+    if (!nuevoNombre || nuevoNombre.trim() === "" || nuevoNombre === diaActivo) return;
+    if (diasPlan.includes(nuevoNombre.trim())) return mostrarAlerta("Ese nombre ya existe", "error");
+    
+    const nombreLimpio = nuevoNombre.trim();
+    setDiasPlan(diasPlan.map(d => d === diaActivo ? nombreLimpio : d));
+    setEjerciciosEnRutina(ejerciciosEnRutina.map(e => e.dia_nombre === diaActivo ? { ...e, dia_nombre: nombreLimpio } : e));
+    setDiaActivo(nombreLimpio);
+  }
+
+  const eliminarDiaActivo = () => {
+    if (diasPlan.length === 1) return mostrarAlerta("La rutina debe tener al menos un día", "error");
+    if (!window.confirm(`¿Seguro que deseas eliminar "${diaActivo}" y todos sus ejercicios?`)) return;
+    
+    const nuevosDias = diasPlan.filter(d => d !== diaActivo);
+    setDiasPlan(nuevosDias);
+    setEjerciciosEnRutina(ejerciciosEnRutina.filter(e => e.dia_nombre !== diaActivo));
+    setDiaActivo(nuevosDias[0]);
   }
   
   const ejerciciosDelDia = ejerciciosEnRutina.filter(e => e.dia_nombre === diaActivo)
@@ -239,8 +261,11 @@ function App() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {listaRutinas.map((rutina) => (
-                <div key={rutina.id} className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-6 flex flex-col shadow-lg">
-                  <h3 className="text-xl font-black text-white mb-2">{rutina.nombre}</h3>
+                <div key={rutina.id} className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-6 flex flex-col shadow-lg relative group">
+                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => handleEliminarRutina(rutina.id)} className="w-8 h-8 flex items-center justify-center bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg" title="Eliminar Plantilla">🗑️</button>
+                  </div>
+                  <h3 className="text-xl font-black text-white mb-2 pr-8">{rutina.nombre}</h3>
                   <p className="text-zinc-400 text-sm mb-6 flex-1">{rutina.descripcion || 'Sin descripción'}</p>
                   <button onClick={() => abrirConstructor(rutina)} className="w-full bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-blue-500 py-3 rounded-xl font-bold transition flex justify-center gap-2"><span>⚙️</span> Editar Ejercicios</button>
                 </div>
@@ -280,11 +305,18 @@ function App() {
               </div>
 
               <div className={`lg:col-span-8 bg-zinc-900/30 border border-zinc-800 rounded-2xl flex flex-col p-6`}>
-                 <div className="flex items-center gap-2 mb-6 border-b border-zinc-800 pb-4 overflow-x-auto custom-scrollbar">
-                    {diasPlan.map(dia => (
-                      <button key={dia} onClick={() => setDiaActivo(dia)} className={`px-4 py-2 rounded-xl font-bold text-sm transition-colors whitespace-nowrap ${diaActivo === dia ? 'bg-blue-600 text-white' : 'text-zinc-500 bg-zinc-900 hover:bg-zinc-800'}`}>{dia}</button>
-                    ))}
-                    <button onClick={agregarNuevoDia} className="px-3 py-2 rounded-xl font-bold text-sm text-emerald-400 hover:bg-emerald-500/10 transition flex items-center gap-1 whitespace-nowrap"><span>+</span> Nuevo Día</button>
+                 <div className="flex items-center justify-between mb-6 border-b border-zinc-800 pb-4">
+                   <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar flex-1">
+                      {diasPlan.map(dia => (
+                        <button key={dia} onClick={() => setDiaActivo(dia)} className={`px-4 py-2 rounded-xl font-bold text-sm transition-colors whitespace-nowrap ${diaActivo === dia ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-zinc-500 bg-zinc-900 hover:bg-zinc-800'}`}>{dia}</button>
+                      ))}
+                      <button onClick={agregarNuevoDia} className="px-3 py-2 rounded-xl font-bold text-sm text-emerald-400 hover:bg-emerald-500/10 transition flex items-center gap-1 whitespace-nowrap"><span>+</span> Nuevo Día</button>
+                   </div>
+                   
+                   <div className="flex items-center gap-1 pl-4 ml-4 border-l border-zinc-800 shrink-0">
+                     <button onClick={renombrarDiaActivo} className="p-2 text-zinc-400 hover:text-blue-400 bg-zinc-900 hover:bg-blue-500/10 rounded-lg transition" title="Renombrar Día">✏️</button>
+                     <button onClick={eliminarDiaActivo} className="p-2 text-zinc-400 hover:text-red-400 bg-zinc-900 hover:bg-red-500/10 rounded-lg transition" title="Eliminar Día">🗑️</button>
+                   </div>
                  </div>
 
                  {ejerciciosDelDia.length === 0 ? (

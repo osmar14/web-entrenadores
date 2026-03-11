@@ -9,7 +9,6 @@ export default function Clientes({
 }) {
   const [mostrarModalAsignar, setMostrarModalAsignar] = useState(false);
   const [mostrarModalCliente, setMostrarModalCliente] = useState(false);
-  // 🌟 AÑADIDO: El estado inicial ahora incluye 'email'
   const [nuevoCliente, setNuevoCliente] = useState({ nombre: '', email: '', objetivo: '' });
   
   const [rutinaEnProgreso, setRutinaEnProgreso] = useState(null); 
@@ -18,6 +17,9 @@ export default function Clientes({
   const [notasCliente, setNotasCliente] = useState([]);
   const [mostrarModalNota, setMostrarModalNota] = useState(false);
   const [nuevaNota, setNuevaNota] = useState({ categoria: 'General', mensaje: '' });
+  
+  // 🌟 ESTADO NUEVO PARA EL VOLUMEN SEMANAL
+  const [volumenSemanal, setVolumenSemanal] = useState([]);
 
   const rutinasDelCliente = clienteSeleccionado ? todasLasRutinas.filter(r => r.cliente_id === clienteSeleccionado.id) : [];
   const emojisGym = ['🏋️‍♂️', '💪', '🔥', '⚡', '🦍', '🥇', '🦾'];
@@ -30,11 +32,18 @@ export default function Clientes({
 
   const cargarExpediente = async (cliente_id) => {
     try {
-      const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/notas/${cliente_id}`);
-      const datos = await res.json();
-      setNotasCliente(datos);
+      const resNotas = await fetch(`https://backend-entrenadores-production.up.railway.app/api/notas/${cliente_id}`);
+      const datosNotas = await resNotas.json();
+      setNotasCliente(datosNotas);
+
+      // 🌟 LLAMADA PARA OBTENER EL VOLUMEN
+      const resVolumen = await fetch(`https://backend-entrenadores-production.up.railway.app/api/metricas/volumen/${cliente_id}`);
+      if(resVolumen.ok) {
+        const datosVolumen = await resVolumen.json();
+        setVolumenSemanal(datosVolumen);
+      }
     } catch (error) {
-      console.error("Error al cargar notas", error);
+      console.error("Error al cargar expediente", error);
     }
   };
 
@@ -73,7 +82,6 @@ export default function Clientes({
     }
   };
 
-  // 🌟 AÑADIDO: La nueva función inteligente que habla con Firebase
   const handleGuardarCliente = async () => {
     if (!nuevoCliente.nombre) return mostrarAlerta("El nombre es obligatorio", "error");
     if (!nuevoCliente.email) return mostrarAlerta("El correo es obligatorio para darle acceso a la App", "error");
@@ -94,7 +102,6 @@ export default function Clientes({
       const data = await res.json();
 
       if (res.ok) {
-        // Alerta nativa para copiar la contraseña
         alert(`✅ ¡Cuenta creada con éxito!\n\nPásale estos datos a tu cliente para que entre a su App:\n\n✉️ Email: ${data.email}\n🔑 Contraseña: ${data.password_temporal}`);
         
         setMostrarModalCliente(false); 
@@ -118,7 +125,6 @@ export default function Clientes({
     setRutinaEnProgreso(rutina);
   };
 
-  // 🌟 AÑADIDO: Separación de Lesión (Rojo) y Salud (Azul), y colores ajustados
   const getEstiloNota = (categoria) => {
     switch(categoria) {
       case 'Lesión': return { color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30', icon: '🚨' };
@@ -164,8 +170,8 @@ export default function Clientes({
           <button onClick={() => setClienteSeleccionado(null)} className="text-zinc-500 hover:text-zinc-300 font-medium text-sm flex items-center gap-2 mb-6 transition">&larr; Volver a Mis Clientes</button>
           
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-3xl p-6 mb-8 shadow-xl flex flex-col lg:flex-row gap-8">
-            <div className="lg:w-1/3 flex flex-col gap-6 border-b lg:border-b-0 lg:border-r border-zinc-800 pb-6 lg:pb-0 lg:pr-8">
-              <div className="flex items-center gap-5">
+            <div className="lg:w-1/3 flex flex-col gap-4 border-b lg:border-b-0 lg:border-r border-zinc-800 pb-6 lg:pb-0 lg:pr-8">
+              <div className="flex items-center gap-5 mb-2">
                 <div className="w-20 h-20 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center text-4xl font-black text-zinc-900 shadow-lg shrink-0">
                   {clienteSeleccionado.nombre.charAt(0).toUpperCase()}
                 </div>
@@ -179,17 +185,40 @@ export default function Clientes({
                 <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-1">Objetivo Principal</p>
                 <p className="text-sm font-medium text-zinc-300">🎯 {clienteSeleccionado.objetivo || 'Sin objetivo específico'}</p>
               </div>
+
+              {/* 🌟 NUEVO: PANEL DE VOLUMEN SEMANAL */}
+              <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 shadow-inner flex-1 flex flex-col mt-2">
+                <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-3 flex justify-between items-center">
+                  <span>Volumen (Últimos 7 días)</span>
+                  <span className="text-emerald-500 text-xs">📊</span>
+                </p>
+                
+                {volumenSemanal.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center text-zinc-600 text-xs text-center px-4">
+                    Aún no hay series registradas esta semana.
+                  </div>
+                ) : (
+                  <div className="space-y-3 overflow-y-auto custom-scrollbar flex-1 pr-2">
+                    {volumenSemanal.map((item, idx) => (
+                      <div key={idx}>
+                        <div className="flex justify-between text-xs font-bold mb-1">
+                          <span className="text-zinc-300">{item.grupo_muscular || 'General'}</span>
+                          <span className="text-blue-400">{item.total_series} series</span>
+                        </div>
+                        <div className="w-full bg-zinc-900 rounded-full h-1.5 overflow-hidden">
+                          <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${Math.min((item.total_series / 20) * 100, 100)}%` }}></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="lg:w-2/3 flex flex-col h-64">
+            <div className="lg:w-2/3 flex flex-col h-80">
               <div className="flex justify-between items-center mb-4 shrink-0">
                 <h3 className="text-lg font-black text-white flex items-center gap-2"><span>📂</span> Bitácora Médica y Notas</h3>
-                <button 
-                  onClick={() => setMostrarModalNota(true)}
-                  className="bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 border border-blue-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1"
-                >
-                  ➕ Agregar Nota
-                </button>
+                <button onClick={() => setMostrarModalNota(true)} className="bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 border border-blue-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">➕ Agregar Nota</button>
               </div>
               
               <div className="flex-1 bg-zinc-950/50 border border-zinc-800/80 rounded-xl p-4 overflow-y-auto custom-scrollbar relative">
@@ -268,8 +297,6 @@ export default function Clientes({
         />
       )}
 
-      {/* MODALES FLOTANTES */}
-      
       {mostrarModalNota && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
           <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl w-full max-w-md shadow-2xl animate-in zoom-in duration-200">
@@ -290,7 +317,6 @@ export default function Clientes({
                   className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition cursor-pointer"
                 >
                   <option value="General">📝 Nota General</option>
-                  {/* 🌟 AÑADIDO: Opciones separadas */}
                   <option value="Lesión">🚨 Lesión / Dolor Agudo</option>
                   <option value="Salud">🩺 Salud / Movilidad</option>
                   <option value="Nutrición">🍏 Nutrición</option>
@@ -335,7 +361,6 @@ export default function Clientes({
         </div>
       )}
 
-      {/* 🌟 AÑADIDO: Modal de Nuevo Cliente con Input de Correo */}
       {mostrarModalCliente && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
           <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl w-full max-w-md shadow-2xl">
@@ -345,27 +370,9 @@ export default function Clientes({
             </div>
             
             <div className="space-y-4">
-              <input 
-                type="text" 
-                value={nuevoCliente.nombre} 
-                onChange={(e) => setNuevoCliente({...nuevoCliente, nombre: e.target.value})} 
-                placeholder="Nombre completo" 
-                className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:border-emerald-500 outline-none" 
-              />
-              <input 
-                type="email" 
-                value={nuevoCliente.email} 
-                onChange={(e) => setNuevoCliente({...nuevoCliente, email: e.target.value.trim()})} 
-                placeholder="Correo electrónico (Acceso a la App)" 
-                className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:border-emerald-500 outline-none" 
-              />
-              <input 
-                type="text" 
-                value={nuevoCliente.objetivo} 
-                onChange={(e) => setNuevoCliente({...nuevoCliente, objetivo: e.target.value})} 
-                placeholder="Objetivo (Ej. Hipertrofia)" 
-                className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:border-emerald-500 outline-none" 
-              />
+              <input type="text" value={nuevoCliente.nombre} onChange={(e) => setNuevoCliente({...nuevoCliente, nombre: e.target.value})} placeholder="Nombre completo" className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:border-emerald-500 outline-none" />
+              <input type="email" value={nuevoCliente.email} onChange={(e) => setNuevoCliente({...nuevoCliente, email: e.target.value.trim()})} placeholder="Correo electrónico (Acceso a la App)" className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:border-emerald-500 outline-none" />
+              <input type="text" value={nuevoCliente.objetivo} onChange={(e) => setNuevoCliente({...nuevoCliente, objetivo: e.target.value})} placeholder="Objetivo (Ej. Hipertrofia)" className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:border-emerald-500 outline-none" />
             </div>
             
             <div className="flex justify-end gap-3 mt-8">
