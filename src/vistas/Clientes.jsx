@@ -9,7 +9,8 @@ export default function Clientes({
 }) {
   const [mostrarModalAsignar, setMostrarModalAsignar] = useState(false);
   const [mostrarModalCliente, setMostrarModalCliente] = useState(false);
-  const [nuevoCliente, setNuevoCliente] = useState({ nombre: '', objetivo: '' });
+  // 🌟 AÑADIDO: El estado inicial ahora incluye 'email'
+  const [nuevoCliente, setNuevoCliente] = useState({ nombre: '', email: '', objetivo: '' });
   
   const [rutinaEnProgreso, setRutinaEnProgreso] = useState(null); 
   const [modoEstacion, setModoEstacion] = useState('registro'); 
@@ -21,9 +22,6 @@ export default function Clientes({
   const rutinasDelCliente = clienteSeleccionado ? todasLasRutinas.filter(r => r.cliente_id === clienteSeleccionado.id) : [];
   const emojisGym = ['🏋️‍♂️', '💪', '🔥', '⚡', '🦍', '🥇', '🦾'];
 
-  // 🌟 SOLUCIÓN A LA PANTALLA NEGRA (EL LIMBO)
-  // Si le dan clic a "Mis Clientes" en el menú, el clienteSeleccionado se vuelve null.
-  // Aquí le decimos que si eso pasa, también cierre la rutina abierta.
   useEffect(() => {
     if (!clienteSeleccionado) {
       setRutinaEnProgreso(null);
@@ -55,7 +53,7 @@ export default function Clientes({
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'entrenador-email': usuarioActual.email 
+          'usuario-email': usuarioActual.email 
         },
         body: JSON.stringify({
           cliente_id: clienteSeleccionado.id,
@@ -75,26 +73,35 @@ export default function Clientes({
     }
   };
 
+  // 🌟 AÑADIDO: La nueva función inteligente que habla con Firebase
   const handleGuardarCliente = async () => {
     if (!nuevoCliente.nombre) return mostrarAlerta("El nombre es obligatorio", "error");
+    if (!nuevoCliente.email) return mostrarAlerta("El correo es obligatorio para darle acceso a la App", "error");
     if (!usuarioActual) return mostrarAlerta("Error de sesión", "error");
+
+    mostrarAlerta("Creando cuenta en el servidor...", "exito");
 
     try {
       const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/clientes', {
         method: 'POST', 
         headers: { 
           'Content-Type': 'application/json',
-          'entrenador-email': usuarioActual.email 
+          'usuario-email': usuarioActual.email 
         }, 
         body: JSON.stringify(nuevoCliente)
       });
+      
+      const data = await res.json();
+
       if (res.ok) {
-        mostrarAlerta("Cliente agregado 👥", "exito");
+        // Alerta nativa para copiar la contraseña
+        alert(`✅ ¡Cuenta creada con éxito!\n\nPásale estos datos a tu cliente para que entre a su App:\n\n✉️ Email: ${data.email}\n🔑 Contraseña: ${data.password_temporal}`);
+        
         setMostrarModalCliente(false); 
-        setNuevoCliente({ nombre: '', objetivo: '' }); 
+        setNuevoCliente({ nombre: '', email: '', objetivo: '' }); 
         cargarDatos(); 
       } else {
-        mostrarAlerta("No se pudo guardar", "error");
+        mostrarAlerta(data.error || "Error al crear cliente", "error");
       }
     } catch (e) { 
       mostrarAlerta("Error de conexión", "error"); 
@@ -111,11 +118,13 @@ export default function Clientes({
     setRutinaEnProgreso(rutina);
   };
 
+  // 🌟 AÑADIDO: Separación de Lesión (Rojo) y Salud (Azul), y colores ajustados
   const getEstiloNota = (categoria) => {
     switch(categoria) {
-      case 'Salud/Lesión': return { color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30', icon: '🏥' };
+      case 'Lesión': return { color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30', icon: '🚨' };
+      case 'Salud': return { color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30', icon: '🩺' };
       case 'Nutrición': return { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', icon: '🍏' };
-      case 'Motivación': return { color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30', icon: '🧠' };
+      case 'Motivación': return { color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/30', icon: '🧠' };
       default: return { color: 'text-zinc-300', bg: 'bg-zinc-800', border: 'border-zinc-700', icon: '📝' }; 
     }
   };
@@ -281,7 +290,9 @@ export default function Clientes({
                   className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition cursor-pointer"
                 >
                   <option value="General">📝 Nota General</option>
-                  <option value="Salud/Lesión">🏥 Salud y Lesiones</option>
+                  {/* 🌟 AÑADIDO: Opciones separadas */}
+                  <option value="Lesión">🚨 Lesión / Dolor Agudo</option>
+                  <option value="Salud">🩺 Salud / Movilidad</option>
                   <option value="Nutrición">🍏 Nutrición</option>
                   <option value="Motivación">🧠 Motivación / Psicología</option>
                 </select>
@@ -307,13 +318,61 @@ export default function Clientes({
 
       {mostrarModalAsignar && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl w-full max-w-md shadow-2xl"><div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-extrabold text-white">Plantillas</h2><button onClick={() => setMostrarModalAsignar(false)} className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 hover:text-white">✕</button></div><div className="space-y-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">{listaRutinas.map(p => (<div key={p.id} className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl flex justify-between cursor-pointer hover:border-blue-500 transition-colors" onClick={() => { handleClonarRutina(p.id, clienteSeleccionado.id); setMostrarModalAsignar(false); }}><div><p className="font-bold text-white">{p.nombre}</p></div><div className="w-8 h-8 rounded-lg bg-zinc-900 text-zinc-500 font-bold flex items-center justify-center">→</div></div>))}</div></div>
+          <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl w-full max-w-md shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-extrabold text-white">Plantillas</h2>
+              <button onClick={() => setMostrarModalAsignar(false)} className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 hover:text-white">✕</button>
+            </div>
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+              {listaRutinas.map(p => (
+                <div key={p.id} className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl flex justify-between cursor-pointer hover:border-blue-500 transition-colors" onClick={() => { handleClonarRutina(p.id, clienteSeleccionado.id); setMostrarModalAsignar(false); }}>
+                  <div><p className="font-bold text-white">{p.nombre}</p></div>
+                  <div className="w-8 h-8 rounded-lg bg-zinc-900 text-zinc-500 font-bold flex items-center justify-center">→</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
+      {/* 🌟 AÑADIDO: Modal de Nuevo Cliente con Input de Correo */}
       {mostrarModalCliente && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl w-full max-w-md shadow-2xl"><div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-extrabold text-white">Nuevo Cliente</h2><button onClick={() => setMostrarModalCliente(false)} className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 hover:text-white">✕</button></div><div className="space-y-5"><input type="text" value={nuevoCliente.nombre} onChange={(e) => setNuevoCliente({...nuevoCliente, nombre: e.target.value})} placeholder="Nombre" className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:border-emerald-500 outline-none" /><input type="text" value={nuevoCliente.objetivo} onChange={(e) => setNuevoCliente({...nuevoCliente, objetivo: e.target.value})} placeholder="Objetivo" className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:border-emerald-500 outline-none" /></div><div className="flex justify-end gap-3 mt-8"><button onClick={() => setMostrarModalCliente(false)} className="text-zinc-400 font-bold hover:text-white">Cancelar</button><button onClick={handleGuardarCliente} className="bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-emerald-500">Guardar</button></div></div>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl w-full max-w-md shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-extrabold text-white">Nuevo Cliente</h2>
+              <button onClick={() => setMostrarModalCliente(false)} className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 hover:text-white">✕</button>
+            </div>
+            
+            <div className="space-y-4">
+              <input 
+                type="text" 
+                value={nuevoCliente.nombre} 
+                onChange={(e) => setNuevoCliente({...nuevoCliente, nombre: e.target.value})} 
+                placeholder="Nombre completo" 
+                className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:border-emerald-500 outline-none" 
+              />
+              <input 
+                type="email" 
+                value={nuevoCliente.email} 
+                onChange={(e) => setNuevoCliente({...nuevoCliente, email: e.target.value.trim()})} 
+                placeholder="Correo electrónico (Acceso a la App)" 
+                className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:border-emerald-500 outline-none" 
+              />
+              <input 
+                type="text" 
+                value={nuevoCliente.objetivo} 
+                onChange={(e) => setNuevoCliente({...nuevoCliente, objetivo: e.target.value})} 
+                placeholder="Objetivo (Ej. Hipertrofia)" 
+                className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:border-emerald-500 outline-none" 
+              />
+            </div>
+            
+            <div className="flex justify-end gap-3 mt-8">
+              <button onClick={() => setMostrarModalCliente(false)} className="text-zinc-400 font-bold hover:text-white px-4 py-2">Cancelar</button>
+              <button onClick={handleGuardarCliente} className="bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-emerald-500 shadow-lg shadow-emerald-500/20">Crear y Dar Acceso</button>
+            </div>
+          </div>
         </div>
       )}
     </>
