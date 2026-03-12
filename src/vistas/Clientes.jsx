@@ -20,9 +20,8 @@ export default function Clientes({
   
   const [volumenSemanal, setVolumenSemanal] = useState([]);
   
-  // 🌟 NUEVOS ESTADOS PARA EL FEEDBACK DEL CLIENTE
   const [feedbackCliente, setFeedbackCliente] = useState([]);
-  const [tabNotas, setTabNotas] = useState('coach'); // 'coach' o 'cliente'
+  const [tabNotas, setTabNotas] = useState('coach'); 
 
   const rutinasDelCliente = clienteSeleccionado ? todasLasRutinas.filter(r => r.cliente_id === clienteSeleccionado.id) : [];
   const emojisGym = ['🏋️‍♂️', '💪', '🔥', '⚡', '🦍', '🥇', '🦾'];
@@ -41,7 +40,6 @@ export default function Clientes({
       const resVolumen = await fetch(`https://backend-entrenadores-production.up.railway.app/api/metricas/volumen/${cliente_id}`);
       if(resVolumen.ok) setVolumenSemanal(await resVolumen.json());
 
-      // 🌟 LLAMADA AL NUEVO ENDPOINT DE FEEDBACK
       const resFeedback = await fetch(`https://backend-entrenadores-production.up.railway.app/api/feedback-cliente/${cliente_id}`);
       if(resFeedback.ok) setFeedbackCliente(await resFeedback.json());
 
@@ -53,7 +51,7 @@ export default function Clientes({
   useEffect(() => {
     if (clienteSeleccionado) {
       cargarExpediente(clienteSeleccionado.id);
-      setTabNotas('coach'); // Resetea la pestaña al cambiar de cliente
+      setTabNotas('coach'); 
     }
   }, [clienteSeleccionado]);
 
@@ -130,6 +128,11 @@ export default function Clientes({
       default: return { color: 'text-zinc-300', bg: 'bg-zinc-800', border: 'border-zinc-700', icon: '📝' }; 
     }
   };
+
+  // 🌟 FILTRO ANTI-DUPLICADOS PARA LAS NOTAS DEL CLIENTE
+  const feedbackUnico = feedbackCliente.filter((fb, idx, arr) => 
+    idx === arr.findIndex(t => t.ejercicio_nombre === fb.ejercicio_nombre && t.notas_cliente === fb.notas_cliente)
+  );
 
   return (
     <>
@@ -210,7 +213,6 @@ export default function Clientes({
               </div>
             </div>
 
-            {/* 🌟 NUEVO SISTEMA DE PESTAÑAS (TABS) PARA NOTAS Y FEEDBACK */}
             <div className="lg:w-2/3 flex flex-col h-96">
               <div className="flex justify-between items-center mb-4 shrink-0">
                 <div className="flex bg-zinc-900 border border-zinc-800 p-1 rounded-xl shadow-inner">
@@ -228,7 +230,6 @@ export default function Clientes({
               </div>
               
               <div className="flex-1 bg-zinc-950/50 border border-zinc-800/80 rounded-xl p-4 overflow-y-auto custom-scrollbar relative shadow-inner">
-                {/* VISTA 1: BITÁCORA DEL COACH */}
                 {tabNotas === 'coach' ? (
                   notasCliente.length === 0 ? (
                      <div className="h-full flex flex-col items-center justify-center text-center opacity-50">
@@ -261,8 +262,8 @@ export default function Clientes({
                     </div>
                   )
                 ) : (
-                  // VISTA 2: FEEDBACK DEL CLIENTE
-                  feedbackCliente.length === 0 ? (
+                  // 🌟 USAMOS EL ARRAY FILTRADO SIN REPETICIONES
+                  feedbackUnico.length === 0 ? (
                      <div className="h-full flex flex-col items-center justify-center text-center opacity-50">
                        <span className="text-3xl mb-2">🗣️</span>
                        <p className="text-sm font-bold text-zinc-400">Aún no hay feedback</p>
@@ -270,7 +271,7 @@ export default function Clientes({
                      </div>
                   ) : (
                     <div className="space-y-3">
-                      {feedbackCliente.map((fb, idx) => {
+                      {feedbackUnico.map((fb, idx) => {
                          const fechaNota = new Date(fb.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
                          return (
                            <div key={idx} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col hover:border-emerald-500/50 transition duration-300 animate-in fade-in slide-in-from-right-2">
