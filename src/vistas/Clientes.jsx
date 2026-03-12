@@ -294,6 +294,7 @@ export default function Clientes({
           onVolver={() => setRutinaEnProgreso(null)}
           mostrarAlerta={mostrarAlerta}
           vistaInicial={modoEstacion}
+          usuarioActual={usuarioActual} 
         />
       )}
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAlerta, vistaInicial }) {
+export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAlerta, vistaInicial, usuarioActual }) {
   const [ejerciciosProgreso, setEjerciciosProgreso] = useState([]);
   const [diasProgreso, setDiasProgreso] = useState([]);
   const [diaProgresoActivo, setDiaProgresoActivo] = useState('');
@@ -43,17 +43,17 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
         if (seriesUltimaVez.length > 0) {
           setsArray = seriesUltimaVez.map((s, i) => ({
             serie_numero: i + 1,
-            peso: '', reps: '',
-            tipo_serie: s.tipo_serie || 'Normal',
-            peso_anterior: s.peso_kg, reps_anterior: s.repeticiones
+            peso: '', reps: '', rir: '',
+            tipo_serie: s.tipo_serie || 'Efectiva', // 🌟 Cambiado a Efectiva
+            peso_anterior: s.peso_kg, reps_anterior: s.repeticiones, rir_anterior: s.rir || ''
           }));
         } else {
           const numeroSeries = parseInt(ej.series_objetivo) || 1; 
           setsArray = Array.from({ length: numeroSeries }, (_, i) => ({
             serie_numero: i + 1,
-            peso: '', reps: '',
-            tipo_serie: 'Normal',
-            peso_anterior: '', reps_anterior: ''
+            peso: '', reps: '', rir: '',
+            tipo_serie: 'Efectiva', // 🌟 Cambiado a Efectiva
+            peso_anterior: '', reps_anterior: '', rir_anterior: ''
           }));
         }
 
@@ -93,7 +93,7 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
   const agregarSerieExtra = (ui_id) => {
     setEjerciciosProgreso(ejerciciosProgreso.map(ej => {
       if (ej.ui_id !== ui_id) return ej;
-      return { ...ej, sets: [...ej.sets, { serie_numero: ej.sets.length + 1, peso: '', reps: '', tipo_serie: 'Normal', peso_anterior: '', reps_anterior: '' }] };
+      return { ...ej, sets: [...ej.sets, { serie_numero: ej.sets.length + 1, peso: '', reps: '', rir: '', tipo_serie: 'Efectiva', peso_anterior: '', reps_anterior: '', rir_anterior: '' }] };
     }));
   };
 
@@ -106,33 +106,52 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
   };
 
   const guardarProgresoHoy = async () => {
+    // 🌟 REPARACIÓN DEL BOTÓN DE GUARDAR
+    if (!usuarioActual) return mostrarAlerta("Error de sesión", "error");
+
     const ejerciciosDelDia = ejerciciosProgreso.filter(e => e.dia_nombre === diaProgresoActivo);
     const registrosAEnviar = [];
     
     ejerciciosDelDia.forEach(ej => {
       ej.sets.forEach(set => {
-        if (set.peso || set.reps) {
+        // 🌟 Permitimos peso 0 para ejercicios corporales como Dominadas o Fondos
+        if (set.peso !== '' || set.reps !== '') {
           registrosAEnviar.push({
-            ejercicio_id: ej.ejercicio_id, serie_numero: set.serie_numero,
-            peso: set.peso, reps: set.reps, tipo_serie: set.tipo_serie 
+            ejercicio_id: ej.ejercicio_id, 
+            serie_numero: set.serie_numero,
+            peso: set.peso === '' ? 0 : parseFloat(set.peso), 
+            reps: parseInt(set.reps) || 0, 
+            rir: set.rir || null,
+            tipo_serie: set.tipo_serie 
           });
         }
       });
     });
 
-    if (registrosAEnviar.length === 0) return mostrarAlerta("No anotaste ningún dato nuevo", "error");
+    if (registrosAEnviar.length === 0) return mostrarAlerta("No anotaste ningún dato nuevo (Llena peso o reps)", "error");
+
+    mostrarAlerta("Guardando datos...", "exito"); // Feedback visual
 
     try {
       const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/progreso', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', 
+        headers: { 
+          'Content-Type': 'application/json',
+          'usuario-email': usuarioActual.email // 🛡️ El escudo de seguridad faltante
+        },
         body: JSON.stringify({ cliente_id: cliente.id, rutina_id: rutina.id, registros: registrosAEnviar })
       });
 
       if (res.ok) {
-        mostrarAlerta(`¡Entrenamiento guardado! 📈`, "exito");
+        mostrarAlerta(`¡Entrenamiento guardado y volumen actualizado! 📈`, "exito");
         cargarDatosProgreso(); 
+      } else {
+        const data = await res.json();
+        mostrarAlerta(data.error || "Error al guardar progreso", "error");
       }
-    } catch (e) { mostrarAlerta("Error al guardar progreso", "error"); }
+    } catch (e) { 
+      mostrarAlerta("Error de conexión al guardar", "error"); 
+    }
   };
 
   const historialEnriquecido = historialCliente.map(registro => {
@@ -157,7 +176,7 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
   const getColorTipoSerie = (tipo) => {
     switch(tipo) {
       case 'Calentamiento': return 'text-orange-400 bg-orange-400/10 border-orange-400/30';
-      case 'Aproximación': return 'text-blue-400 bg-blue-400/10 border-blue-400/30';
+      case 'Efectiva': return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30';
       case 'Dropset': return 'text-purple-400 bg-purple-400/10 border-purple-400/30';
       default: return 'text-zinc-400 bg-zinc-800 border-zinc-700'; 
     }
@@ -166,7 +185,7 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
   const getEstiloCajaHistorial = (tipo) => {
     switch(tipo) {
       case 'Calentamiento': return { bg: 'bg-orange-500/10 border-orange-500/30', badge: 'text-orange-400' };
-      case 'Aproximación': return { bg: 'bg-blue-500/10 border-blue-500/30', badge: 'text-blue-400' };
+      case 'Efectiva': return { bg: 'bg-emerald-500/10 border-emerald-500/30', badge: 'text-emerald-400' };
       case 'Dropset': return { bg: 'bg-purple-500/10 border-purple-500/30', badge: 'text-purple-400' };
       default: return { bg: 'bg-zinc-950 border-zinc-800', badge: 'text-zinc-500' }; 
     }
@@ -180,13 +199,7 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
     <div className="mt-4 animate-in fade-in slide-in-from-right-8 duration-300 h-full flex flex-col">
       <div className="mb-6 flex flex-col md:flex-row md:justify-between md:items-end gap-4 shrink-0">
         <div>
-          {/* 🌟 AQUÍ ESTÁ EL BOTÓN DE VOLVER MEJORADO */}
-          <button 
-            onClick={onVolver} 
-            className="bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 mb-4 transition-colors border border-zinc-700 shadow-sm w-fit"
-          >
-            &larr; Volver al perfil
-          </button>
+          <button onClick={onVolver} className="bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 mb-4 transition-colors border border-zinc-700 shadow-sm w-fit">&larr; Volver al perfil</button>
           
           <h2 className="text-3xl font-black text-white flex items-center gap-3">
             <span className={vistaProgreso === 'registro' ? "text-emerald-400" : "text-blue-400"}>
@@ -227,7 +240,7 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
                        <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-black shrink-0">{index + 1}</div>
                        <div>
                          <p className="font-black text-white text-lg">{ej.nombre}</p>
-                         <p className="text-xs text-zinc-500 uppercase tracking-wider font-bold">Objetivo: {ej.series_objetivo} x {ej.reps_objetivo}</p>
+                         <p className="text-xs text-zinc-500 uppercase tracking-wider font-bold">Objetivo: {ej.series_objetivo} x {ej.reps_objetivo} {ej.rir_objetivo ? `(RIR ${ej.rir_objetivo})` : ''}</p>
                        </div>
                      </div>
                      <div className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 shadow-inner">
@@ -237,25 +250,29 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
 
                    <div className="p-4 flex flex-col gap-3">
                       <div className="flex text-[10px] font-black text-zinc-500 uppercase tracking-widest px-2 items-center">
-                         <div className="w-12 text-center">Set</div><div className="w-32 text-center">Tipo</div><div className="flex-1 text-center text-blue-400">Peso (Kg)</div><div className="flex-1 text-center text-emerald-400">Reps</div><div className="w-8"></div>
+                         <div className="w-12 text-center">Set</div><div className="w-28 text-center">Tipo</div><div className="flex-1 text-center text-blue-400">Peso (Kg)</div><div className="flex-1 text-center text-emerald-400">Reps</div><div className="w-20 text-center text-emerald-600">RIR</div><div className="w-8"></div>
                       </div>
 
                       {ej.sets.map((set, s_idx) => (
-                        <div key={s_idx} className="flex gap-3 items-center bg-zinc-900/50 p-2 rounded-xl border border-zinc-800/50 hover:border-zinc-700 transition shrink-0">
+                        <div key={s_idx} className="flex gap-2 lg:gap-3 items-center bg-zinc-900/50 p-2 rounded-xl border border-zinc-800/50 hover:border-zinc-700 transition shrink-0">
                            <div className="w-12 font-black text-zinc-400 text-center">{set.serie_numero}</div>
-                           <div className="w-32">
+                           <div className="w-28">
+                             {/* 🌟 TIPOS DE SERIE ACTUALIZADOS */}
                              <select value={set.tipo_serie} onChange={(e) => actualizarSerie(ej.ui_id, s_idx, 'tipo_serie', e.target.value)} className={`w-full text-xs font-bold rounded-lg py-2 px-1 text-center appearance-none cursor-pointer outline-none border transition ${getColorTipoSerie(set.tipo_serie)}`}>
-                               <option value="Normal" className="bg-zinc-900 text-zinc-300">Normal</option>
-                               <option value="Calentamiento" className="bg-zinc-900 text-orange-400">Calentamiento</option>
-                               <option value="Aproximación" className="bg-zinc-900 text-blue-400">Aprox.</option>
+                               <option value="Efectiva" className="bg-zinc-900 text-emerald-400">Efectiva</option>
+                               <option value="Calentamiento" className="bg-zinc-900 text-orange-400">Calent.</option>
                                <option value="Dropset" className="bg-zinc-900 text-purple-400">Dropset</option>
                              </select>
                            </div>
                            <div className="flex-1">
-                             <input type="number" placeholder={set.peso_anterior ? `Ant: ${set.peso_anterior}` : "Ej. 60"} value={set.peso} onChange={(e) => actualizarSerie(ej.ui_id, s_idx, 'peso', e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 text-white text-center rounded-lg py-2 text-sm focus:border-blue-500 focus:outline-none transition placeholder:text-zinc-600 placeholder:italic" />
+                             <input type="number" placeholder={set.peso_anterior ? `Ant: ${set.peso_anterior}` : "Ej. 0 o 60"} value={set.peso} onChange={(e) => actualizarSerie(ej.ui_id, s_idx, 'peso', e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 text-white text-center rounded-lg py-2 text-sm focus:border-blue-500 focus:outline-none transition placeholder:text-zinc-600 placeholder:italic" />
                            </div>
                            <div className="flex-1">
                              <input type="number" placeholder={set.reps_anterior ? `Ant: ${set.reps_anterior}` : "Ej. 10"} value={set.reps} onChange={(e) => actualizarSerie(ej.ui_id, s_idx, 'reps', e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 text-white text-center rounded-lg py-2 text-sm focus:border-emerald-500 focus:outline-none transition placeholder:text-zinc-600 placeholder:italic" />
+                           </div>
+                           <div className="w-20">
+                             {/* 🌟 NUEVO INPUT RIR */}
+                             <input type="number" placeholder={set.rir_anterior ? `Ant: ${set.rir_anterior}` : "RIR"} value={set.rir} onChange={(e) => actualizarSerie(ej.ui_id, s_idx, 'rir', e.target.value)} className="w-full bg-zinc-950 border border-emerald-900 text-emerald-400 text-center rounded-lg py-2 text-sm focus:border-emerald-500 focus:outline-none transition placeholder:text-zinc-700 placeholder:italic" />
                            </div>
                            <button onClick={() => eliminarSerieEspecifica(ej.ui_id, s_idx)} className="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:bg-red-500/10 hover:text-red-400 transition">✕</button>
                         </div>
@@ -270,12 +287,9 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
           <div className="lg:col-span-4 xl:col-span-3 flex flex-col gap-6 shrink-0">
             <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl flex flex-col p-6 shadow-lg text-center justify-center items-center relative overflow-hidden h-fit">
               <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent pointer-events-none"></div>
-              
               <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center text-3xl mb-4 shadow-inner text-blue-400 relative z-10">📈</div>
-              
               <h3 className="text-xl font-black text-white mb-2 relative z-10">Análisis y Gráficas</h3>
               <p className="text-zinc-500 text-xs mb-6 leading-relaxed relative z-10 px-2">Revisa el historial detallado de {cliente.nombre} y la evolución de su fuerza.</p>
-              
               <button onClick={() => { setVistaProgreso('analisis'); setTabAnalisis('historial'); }} className="w-full bg-blue-600/10 border border-blue-500/30 hover:bg-blue-600/20 text-blue-400 hover:text-blue-300 py-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 relative z-10 shadow-sm">
                 <span>📊</span> Ver Historial
               </button>
@@ -287,10 +301,8 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
 
       {vistaProgreso === 'analisis' && (
         <div className="bg-zinc-900/30 border border-zinc-800 rounded-2xl flex-1 overflow-hidden flex flex-col shadow-xl">
-           
            {tabAnalisis === 'historial' && (
              <div className="flex flex-col h-full">
-               
                <div className="px-8 pt-6 border-b border-zinc-800 pb-4 shrink-0">
                   <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-3">Filtrar historial por entrenamiento:</p>
                   <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
@@ -333,10 +345,12 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
                                         return (
                                           <div key={set.serie_numero} className={`px-3 py-2 rounded-lg border flex flex-col transition-colors ${estilo.bg}`}>
                                             <span className={`text-[9px] font-black uppercase tracking-wider mb-0.5 ${estilo.badge}`}>
-                                              Set {set.serie_numero} {set.tipo_serie && set.tipo_serie !== 'Normal' ? `• ${set.tipo_serie}` : ''}
+                                              Set {set.serie_numero} {set.tipo_serie && set.tipo_serie !== 'Efectiva' ? `• ${set.tipo_serie}` : ''}
                                             </span>
-                                            <span className="text-white font-medium text-sm">
-                                              {set.peso_kg} kg <span className="text-zinc-500 text-xs mx-1">x</span> {set.repeticiones}
+                                            <span className="text-white font-medium text-sm flex items-center gap-1">
+                                              {set.peso_kg} kg <span className="text-zinc-500 text-[10px] mx-1">x</span> {set.repeticiones}
+                                              {/* 🌟 Muestra el RIR en el historial si lo anotaron */}
+                                              {set.rir && <span className="text-emerald-500 text-[10px] ml-auto border border-emerald-500/30 px-1 rounded">RIR {set.rir}</span>}
                                             </span>
                                           </div>
                                         );
