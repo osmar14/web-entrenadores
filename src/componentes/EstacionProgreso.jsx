@@ -44,7 +44,7 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
           setsArray = seriesUltimaVez.map((s, i) => ({
             serie_numero: i + 1,
             peso: '', reps: '', rir: '',
-            tipo_serie: s.tipo_serie || 'Efectiva', // 🌟 Cambiado a Efectiva
+            tipo_serie: s.tipo_serie || 'Efectiva',
             peso_anterior: s.peso_kg, reps_anterior: s.repeticiones, rir_anterior: s.rir || ''
           }));
         } else {
@@ -52,7 +52,7 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
           setsArray = Array.from({ length: numeroSeries }, (_, i) => ({
             serie_numero: i + 1,
             peso: '', reps: '', rir: '',
-            tipo_serie: 'Efectiva', // 🌟 Cambiado a Efectiva
+            tipo_serie: 'Efectiva',
             peso_anterior: '', reps_anterior: '', rir_anterior: ''
           }));
         }
@@ -106,7 +106,6 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
   };
 
   const guardarProgresoHoy = async () => {
-    // 🌟 REPARACIÓN DEL BOTÓN DE GUARDAR
     if (!usuarioActual) return mostrarAlerta("Error de sesión", "error");
 
     const ejerciciosDelDia = ejerciciosProgreso.filter(e => e.dia_nombre === diaProgresoActivo);
@@ -114,7 +113,6 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
     
     ejerciciosDelDia.forEach(ej => {
       ej.sets.forEach(set => {
-        // 🌟 Permitimos peso 0 para ejercicios corporales como Dominadas o Fondos
         if (set.peso !== '' || set.reps !== '') {
           registrosAEnviar.push({
             ejercicio_id: ej.ejercicio_id, 
@@ -130,14 +128,14 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
 
     if (registrosAEnviar.length === 0) return mostrarAlerta("No anotaste ningún dato nuevo (Llena peso o reps)", "error");
 
-    mostrarAlerta("Guardando datos...", "exito"); // Feedback visual
+    mostrarAlerta("Guardando datos...", "exito"); 
 
     try {
       const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/progreso', {
         method: 'POST', 
         headers: { 
           'Content-Type': 'application/json',
-          'usuario-email': usuarioActual.email // 🛡️ El escudo de seguridad faltante
+          'usuario-email': usuarioActual.email 
         },
         body: JSON.stringify({ cliente_id: cliente.id, rutina_id: rutina.id, registros: registrosAEnviar })
       });
@@ -241,6 +239,10 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
                        <div>
                          <p className="font-black text-white text-lg">{ej.nombre}</p>
                          <p className="text-xs text-zinc-500 uppercase tracking-wider font-bold">Objetivo: {ej.series_objetivo} x {ej.reps_objetivo} {ej.rir_objetivo ? `(RIR ${ej.rir_objetivo})` : ''}</p>
+                         {/* 🌟 NOTA DEL ENTRENADOR VISIBLE AL REGISTRAR */}
+                         {ej.notas_entrenador && (
+                           <p className="text-[10px] text-emerald-400 italic mt-1 bg-emerald-500/10 px-2 py-1 rounded-md inline-block border border-emerald-500/20">👨‍🏫 {ej.notas_entrenador}</p>
+                         )}
                        </div>
                      </div>
                      <div className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 shadow-inner">
@@ -257,7 +259,6 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
                         <div key={s_idx} className="flex gap-2 lg:gap-3 items-center bg-zinc-900/50 p-2 rounded-xl border border-zinc-800/50 hover:border-zinc-700 transition shrink-0">
                            <div className="w-12 font-black text-zinc-400 text-center">{set.serie_numero}</div>
                            <div className="w-28">
-                             {/* 🌟 TIPOS DE SERIE ACTUALIZADOS */}
                              <select value={set.tipo_serie} onChange={(e) => actualizarSerie(ej.ui_id, s_idx, 'tipo_serie', e.target.value)} className={`w-full text-xs font-bold rounded-lg py-2 px-1 text-center appearance-none cursor-pointer outline-none border transition ${getColorTipoSerie(set.tipo_serie)}`}>
                                <option value="Efectiva" className="bg-zinc-900 text-emerald-400">Efectiva</option>
                                <option value="Calentamiento" className="bg-zinc-900 text-orange-400">Calent.</option>
@@ -265,13 +266,12 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
                              </select>
                            </div>
                            <div className="flex-1">
-                             <input type="number" placeholder={set.peso_anterior ? `Ant: ${set.peso_anterior}` : "Ej. 0 o 60"} value={set.peso} onChange={(e) => actualizarSerie(ej.ui_id, s_idx, 'peso', e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 text-white text-center rounded-lg py-2 text-sm focus:border-blue-500 focus:outline-none transition placeholder:text-zinc-600 placeholder:italic" />
+                             <input type="number" placeholder={set.peso_anterior ? `Ant: ${set.peso_anterior}` : "Ej. 0"} value={set.peso} onChange={(e) => actualizarSerie(ej.ui_id, s_idx, 'peso', e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 text-white text-center rounded-lg py-2 text-sm focus:border-blue-500 focus:outline-none transition placeholder:text-zinc-600 placeholder:italic" />
                            </div>
                            <div className="flex-1">
-                             <input type="number" placeholder={set.reps_anterior ? `Ant: ${set.reps_anterior}` : "Ej. 10"} value={set.reps} onChange={(e) => actualizarSerie(ej.ui_id, s_idx, 'reps', e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 text-white text-center rounded-lg py-2 text-sm focus:border-emerald-500 focus:outline-none transition placeholder:text-zinc-600 placeholder:italic" />
+                             <input type="number" placeholder={set.reps_anterior ? `Ant: ${set.reps_anterior}` : "Reps"} value={set.reps} onChange={(e) => actualizarSerie(ej.ui_id, s_idx, 'reps', e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 text-white text-center rounded-lg py-2 text-sm focus:border-emerald-500 focus:outline-none transition placeholder:text-zinc-600 placeholder:italic" />
                            </div>
                            <div className="w-20">
-                             {/* 🌟 NUEVO INPUT RIR */}
                              <input type="number" placeholder={set.rir_anterior ? `Ant: ${set.rir_anterior}` : "RIR"} value={set.rir} onChange={(e) => actualizarSerie(ej.ui_id, s_idx, 'rir', e.target.value)} className="w-full bg-zinc-950 border border-emerald-900 text-emerald-400 text-center rounded-lg py-2 text-sm focus:border-emerald-500 focus:outline-none transition placeholder:text-zinc-700 placeholder:italic" />
                            </div>
                            <button onClick={() => eliminarSerieEspecifica(ej.ui_id, s_idx)} className="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-500 hover:bg-red-500/10 hover:text-red-400 transition">✕</button>
@@ -349,9 +349,14 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
                                             </span>
                                             <span className="text-white font-medium text-sm flex items-center gap-1">
                                               {set.peso_kg} kg <span className="text-zinc-500 text-[10px] mx-1">x</span> {set.repeticiones}
-                                              {/* 🌟 Muestra el RIR en el historial si lo anotaron */}
                                               {set.rir && <span className="text-emerald-500 text-[10px] ml-auto border border-emerald-500/30 px-1 rounded">RIR {set.rir}</span>}
                                             </span>
+                                            {/* 🌟 AQUÍ SE IMPRIME LA NOTA DEL CLIENTE SIN ERROR */}
+                                            {set.notas_cliente && (
+                                              <p className="text-[10px] text-zinc-400 italic mt-1.5 border-l-2 border-zinc-700 pl-2">
+                                                "{set.notas_cliente}"
+                                              </p>
+                                            )}
                                           </div>
                                         );
                                      })}

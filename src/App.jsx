@@ -329,7 +329,14 @@ function App() {
                      {ejerciciosDelDia.map((ejercicio, index) => (
                        <div key={ejercicio.id_unico} className="grid grid-cols-12 gap-3 items-center bg-zinc-900 border border-zinc-800 p-3 rounded-xl">
                          <div className="col-span-1 text-center font-black text-zinc-600">{index + 1}</div>
-                         <div className="col-span-4"><p className="font-bold text-zinc-200 text-sm line-clamp-2">{ejercicio.nombre}</p></div>
+
+                         <div className="col-span-4 flex flex-col">
+                          <p className="font-bold text-zinc-200 text-sm line-clamp-2">{ejercicio.nombre}</p><input 
+                                  type="text"  placeholder="Nota (Ej. Bajar lento...)" value={ejercicio.notas_entrenador || ''} 
+                          onChange={(e) => actualizarEjercicio(ejercicio.id_unico, 'notas_entrenador', e.target.value)} 
+                            className="w-full mt-1 bg-zinc-950 border border-zinc-800 text-emerald-400 text-[10px] font-bold rounded-md px-2 py-1 focus:border-emerald-500 outline-none placeholder-zinc-600" 
+                           />
+                          </div>
                          
                          <div className="col-span-2 flex flex-col items-center">
                            <span className="text-[9px] text-zinc-500 uppercase mb-1">Series</span>
