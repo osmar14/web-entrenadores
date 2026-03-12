@@ -18,8 +18,11 @@ export default function Clientes({
   const [mostrarModalNota, setMostrarModalNota] = useState(false);
   const [nuevaNota, setNuevaNota] = useState({ categoria: 'General', mensaje: '' });
   
-  // 🌟 ESTADO NUEVO PARA EL VOLUMEN SEMANAL
   const [volumenSemanal, setVolumenSemanal] = useState([]);
+  
+  // 🌟 NUEVOS ESTADOS PARA EL FEEDBACK DEL CLIENTE
+  const [feedbackCliente, setFeedbackCliente] = useState([]);
+  const [tabNotas, setTabNotas] = useState('coach'); // 'coach' o 'cliente'
 
   const rutinasDelCliente = clienteSeleccionado ? todasLasRutinas.filter(r => r.cliente_id === clienteSeleccionado.id) : [];
   const emojisGym = ['🏋️‍♂️', '💪', '🔥', '⚡', '🦍', '🥇', '🦾'];
@@ -33,15 +36,15 @@ export default function Clientes({
   const cargarExpediente = async (cliente_id) => {
     try {
       const resNotas = await fetch(`https://backend-entrenadores-production.up.railway.app/api/notas/${cliente_id}`);
-      const datosNotas = await resNotas.json();
-      setNotasCliente(datosNotas);
+      if(resNotas.ok) setNotasCliente(await resNotas.json());
 
-      // 🌟 LLAMADA PARA OBTENER EL VOLUMEN
       const resVolumen = await fetch(`https://backend-entrenadores-production.up.railway.app/api/metricas/volumen/${cliente_id}`);
-      if(resVolumen.ok) {
-        const datosVolumen = await resVolumen.json();
-        setVolumenSemanal(datosVolumen);
-      }
+      if(resVolumen.ok) setVolumenSemanal(await resVolumen.json());
+
+      // 🌟 LLAMADA AL NUEVO ENDPOINT DE FEEDBACK
+      const resFeedback = await fetch(`https://backend-entrenadores-production.up.railway.app/api/feedback-cliente/${cliente_id}`);
+      if(resFeedback.ok) setFeedbackCliente(await resFeedback.json());
+
     } catch (error) {
       console.error("Error al cargar expediente", error);
     }
@@ -50,6 +53,7 @@ export default function Clientes({
   useEffect(() => {
     if (clienteSeleccionado) {
       cargarExpediente(clienteSeleccionado.id);
+      setTabNotas('coach'); // Resetea la pestaña al cambiar de cliente
     }
   }, [clienteSeleccionado]);
 
@@ -103,7 +107,6 @@ export default function Clientes({
 
       if (res.ok) {
         alert(`✅ ¡Cuenta creada con éxito!\n\nPásale estos datos a tu cliente para que entre a su App:\n\n✉️ Email: ${data.email}\n🔑 Contraseña: ${data.password_temporal}`);
-        
         setMostrarModalCliente(false); 
         setNuevoCliente({ nombre: '', email: '', objetivo: '' }); 
         cargarDatos(); 
@@ -115,15 +118,8 @@ export default function Clientes({
     }
   };
 
-  const abrirParaAnotar = (rutina) => {
-    setModoEstacion('registro');
-    setRutinaEnProgreso(rutina);
-  };
-
-  const abrirParaAnalizar = (rutina) => {
-    setModoEstacion('analisis');
-    setRutinaEnProgreso(rutina);
-  };
+  const abrirParaAnotar = (rutina) => { setModoEstacion('registro'); setRutinaEnProgreso(rutina); };
+  const abrirParaAnalizar = (rutina) => { setModoEstacion('analisis'); setRutinaEnProgreso(rutina); };
 
   const getEstiloNota = (categoria) => {
     switch(categoria) {
@@ -186,7 +182,6 @@ export default function Clientes({
                 <p className="text-sm font-medium text-zinc-300">🎯 {clienteSeleccionado.objetivo || 'Sin objetivo específico'}</p>
               </div>
 
-              {/* 🌟 NUEVO: PANEL DE VOLUMEN SEMANAL */}
               <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 shadow-inner flex-1 flex flex-col mt-2">
                 <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-3 flex justify-between items-center">
                   <span>Volumen (Últimos 7 días)</span>
@@ -215,42 +210,85 @@ export default function Clientes({
               </div>
             </div>
 
-            <div className="lg:w-2/3 flex flex-col h-80">
+            {/* 🌟 NUEVO SISTEMA DE PESTAÑAS (TABS) PARA NOTAS Y FEEDBACK */}
+            <div className="lg:w-2/3 flex flex-col h-96">
               <div className="flex justify-between items-center mb-4 shrink-0">
-                <h3 className="text-lg font-black text-white flex items-center gap-2"><span>📂</span> Bitácora Médica y Notas</h3>
-                <button onClick={() => setMostrarModalNota(true)} className="bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 border border-blue-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">➕ Agregar Nota</button>
+                <div className="flex bg-zinc-900 border border-zinc-800 p-1 rounded-xl shadow-inner">
+                  <button onClick={() => setTabNotas('coach')} className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${tabNotas === 'coach' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}>
+                    👨‍🏫 Bitácora Médica
+                  </button>
+                  <button onClick={() => setTabNotas('cliente')} className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${tabNotas === 'cliente' ? 'bg-zinc-800 text-emerald-400 shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}>
+                    🗣️ Feedback Cliente
+                  </button>
+                </div>
+                
+                {tabNotas === 'coach' && (
+                  <button onClick={() => setMostrarModalNota(true)} className="bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 border border-blue-500/20 px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">➕ Agregar Nota</button>
+                )}
               </div>
               
-              <div className="flex-1 bg-zinc-950/50 border border-zinc-800/80 rounded-xl p-4 overflow-y-auto custom-scrollbar relative">
-                {notasCliente.length === 0 ? (
-                   <div className="h-full flex flex-col items-center justify-center text-center opacity-50">
-                     <span className="text-3xl mb-2">📇</span>
-                     <p className="text-sm font-bold text-zinc-400">El expediente está vacío</p>
-                     <p className="text-xs text-zinc-500">Registra lesiones, molestias o notas de progreso.</p>
-                   </div>
-                ) : (
-                  <div className="space-y-4 relative">
-                    <div className="absolute left-4 top-2 bottom-2 w-px bg-zinc-800 z-0"></div>
-                    {notasCliente.map((nota) => {
-                      const estilo = getEstiloNota(nota.categoria);
-                      const fechaNota = new Date(nota.fecha_creacion).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit' });
+              <div className="flex-1 bg-zinc-950/50 border border-zinc-800/80 rounded-xl p-4 overflow-y-auto custom-scrollbar relative shadow-inner">
+                {/* VISTA 1: BITÁCORA DEL COACH */}
+                {tabNotas === 'coach' ? (
+                  notasCliente.length === 0 ? (
+                     <div className="h-full flex flex-col items-center justify-center text-center opacity-50">
+                       <span className="text-3xl mb-2">📇</span>
+                       <p className="text-sm font-bold text-zinc-400">El expediente está vacío</p>
+                       <p className="text-xs text-zinc-500">Registra lesiones, molestias o notas de progreso.</p>
+                     </div>
+                  ) : (
+                    <div className="space-y-4 relative">
+                      <div className="absolute left-4 top-2 bottom-2 w-px bg-zinc-800 z-0"></div>
+                      {notasCliente.map((nota) => {
+                        const estilo = getEstiloNota(nota.categoria);
+                        const fechaNota = new Date(nota.fecha_creacion).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit' });
 
-                      return (
-                        <div key={nota.id} className="relative z-10 flex gap-4">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm border shadow-lg shrink-0 mt-1 ${estilo.bg} ${estilo.border}`}>
-                            {estilo.icon}
-                          </div>
-                          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex-1 hover:border-zinc-700 transition">
-                            <div className="flex justify-between items-start mb-1">
-                              <span className={`text-[10px] font-black uppercase tracking-wider ${estilo.color}`}>{nota.categoria}</span>
-                              <span className="text-[10px] text-zinc-500 font-medium">{fechaNota}</span>
+                        return (
+                          <div key={nota.id} className="relative z-10 flex gap-4 animate-in fade-in slide-in-from-left-2 duration-300">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm border shadow-lg shrink-0 mt-1 ${estilo.bg} ${estilo.border}`}>
+                              {estilo.icon}
                             </div>
-                            <p className="text-sm text-zinc-300 leading-relaxed">{nota.mensaje}</p>
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex-1 hover:border-zinc-700 transition">
+                              <div className="flex justify-between items-start mb-1">
+                                <span className={`text-[10px] font-black uppercase tracking-wider ${estilo.color}`}>{nota.categoria}</span>
+                                <span className="text-[10px] text-zinc-500 font-medium">{fechaNota}</span>
+                              </div>
+                              <p className="text-sm text-zinc-300 leading-relaxed">{nota.mensaje}</p>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )
+                ) : (
+                  // VISTA 2: FEEDBACK DEL CLIENTE
+                  feedbackCliente.length === 0 ? (
+                     <div className="h-full flex flex-col items-center justify-center text-center opacity-50">
+                       <span className="text-3xl mb-2">🗣️</span>
+                       <p className="text-sm font-bold text-zinc-400">Aún no hay feedback</p>
+                       <p className="text-xs text-zinc-500 max-w-xs mt-1">Aquí aparecerán automáticamente las notas que el cliente escriba durante su entrenamiento.</p>
+                     </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {feedbackCliente.map((fb, idx) => {
+                         const fechaNota = new Date(fb.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+                         return (
+                           <div key={idx} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col hover:border-emerald-500/50 transition duration-300 animate-in fade-in slide-in-from-right-2">
+                              <div className="flex justify-between items-center mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                                  <span className="text-xs font-black text-white">{fb.ejercicio_nombre}</span>
+                                </div>
+                                <span className="text-[10px] font-bold text-zinc-500 bg-zinc-950 px-2 py-1 rounded-md">{fechaNota}</span>
+                              </div>
+                              <p className="text-sm text-zinc-300 italic border-l-2 border-emerald-500 pl-3 py-1 bg-zinc-950/30 rounded-r-lg">
+                                "{fb.notas_cliente}"
+                              </p>
+                           </div>
+                         );
+                      })}
+                    </div>
+                  )
                 )}
               </div>
             </div>
@@ -294,7 +332,7 @@ export default function Clientes({
           onVolver={() => setRutinaEnProgreso(null)}
           mostrarAlerta={mostrarAlerta}
           vistaInicial={modoEstacion}
-          usuarioActual={usuarioActual} 
+          usuarioActual={usuarioActual}
         />
       )}
 
@@ -312,11 +350,7 @@ export default function Clientes({
             <div className="space-y-5">
               <div>
                 <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Categoría</label>
-                <select 
-                  value={nuevaNota.categoria} 
-                  onChange={(e) => setNuevaNota({...nuevaNota, categoria: e.target.value})}
-                  className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition cursor-pointer"
-                >
+                <select value={nuevaNota.categoria} onChange={(e) => setNuevaNota({...nuevaNota, categoria: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition cursor-pointer">
                   <option value="General">📝 Nota General</option>
                   <option value="Lesión">🚨 Lesión / Dolor Agudo</option>
                   <option value="Salud">🩺 Salud / Movilidad</option>
@@ -326,12 +360,7 @@ export default function Clientes({
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Mensaje / Detalle</label>
-                <textarea 
-                  value={nuevaNota.mensaje} 
-                  onChange={(e) => setNuevaNota({...nuevaNota, mensaje: e.target.value})}
-                  placeholder="Ej. Siente molestia en el hombro..."
-                  className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition placeholder-zinc-700 min-h-[120px] resize-none"
-                />
+                <textarea value={nuevaNota.mensaje} onChange={(e) => setNuevaNota({...nuevaNota, mensaje: e.target.value})} placeholder="Ej. Siente molestia en el hombro..." className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition placeholder-zinc-700 min-h-[120px] resize-none" />
               </div>
             </div>
             
