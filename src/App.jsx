@@ -139,7 +139,8 @@ function App() {
           series_objetivo: e.series_objetivo, 
           reps_objetivo: e.reps_objetivo, 
           dia_nombre: e.dia_nombre,
-          rir_objetivo: e.rir_objetivo || ''
+          rir_objetivo: e.rir_objetivo || '',
+          notas_entrenador: e.notas_entrenador || '' // 🌟 CARGAMOS LA NOTA DESDE LA BD
         }));
         setEjerciciosEnRutina(ejerciciosRecuperados);
         const diasUnicos = [...new Set(ejerciciosRecuperados.map(e => e.dia_nombre))];
@@ -186,11 +187,15 @@ function App() {
 
   const gruposMusculares = ['Todos', ...new Set(catalogoEjercicios.map(e => e.grupo_muscular || 'General'))]
   const ejerciciosFiltrados = filtroMusculo === 'Todos' ? catalogoEjercicios : catalogoEjercicios.filter(e => (e.grupo_muscular || 'General') === filtroMusculo)
-  const agregarAlConstructor = (ejercicio) => { setEjerciciosEnRutina([...ejerciciosEnRutina, { ...ejercicio, id_unico: Date.now(), series_objetivo: 3, reps_objetivo: '10', dia_nombre: diaActivo, rir_objetivo: '' }]) }
+  
+  // 🌟 AGREGAMOS LA NOTA VACÍA AL CREAR UN EJERCICIO NUEVO
+  const agregarAlConstructor = (ejercicio) => { 
+    setEjerciciosEnRutina([...ejerciciosEnRutina, { ...ejercicio, id_unico: Date.now(), series_objetivo: 3, reps_objetivo: '10', dia_nombre: diaActivo, rir_objetivo: '', notas_entrenador: '' }]) 
+  }
+  
   const quitarDelConstructor = (id_unico) => setEjerciciosEnRutina(ejerciciosEnRutina.filter(e => e.id_unico !== id_unico))
   const actualizarEjercicio = (id_unico, campo, valor) => setEjerciciosEnRutina(ejerciciosEnRutina.map(e => e.id_unico === id_unico ? { ...e, [campo]: valor } : e))
   
-  // MÉTODOS DE DÍAS PERSONALIZADOS
   const agregarNuevoDia = () => { 
     const nuevoNombre = prompt("Nombre de la sesión (ej. Pecho, Pierna, Día 1):");
     if (!nuevoNombre || nuevoNombre.trim() === "") return;
@@ -325,18 +330,22 @@ function App() {
                      <p className="text-zinc-500 text-sm">Busca en el catálogo y agrega ejercicios para esta sesión.</p>
                    </div>
                  ) : (
-                   <div className="flex flex-col gap-3 overflow-y-auto custom-scrollbar">
+                   <div className="flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-2">
                      {ejerciciosDelDia.map((ejercicio, index) => (
-                       <div key={ejercicio.id_unico} className="grid grid-cols-12 gap-3 items-center bg-zinc-900 border border-zinc-800 p-3 rounded-xl">
+                       <div key={ejercicio.id_unico} className="grid grid-cols-12 gap-4 items-center bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
                          <div className="col-span-1 text-center font-black text-zinc-600">{index + 1}</div>
 
-                         <div className="col-span-4 flex flex-col">
-                          <p className="font-bold text-zinc-200 text-sm line-clamp-2">{ejercicio.nombre}</p><input 
-                                  type="text"  placeholder="Nota (Ej. Bajar lento...)" value={ejercicio.notas_entrenador || ''} 
-                          onChange={(e) => actualizarEjercicio(ejercicio.id_unico, 'notas_entrenador', e.target.value)} 
-                            className="w-full mt-1 bg-zinc-950 border border-zinc-800 text-emerald-400 text-[10px] font-bold rounded-md px-2 py-1 focus:border-emerald-500 outline-none placeholder-zinc-600" 
+                         {/* 🌟 AQUÍ ESTÁ EL INPUT DE LA NOTA DEL ENTRENADOR 🌟 */}
+                         <div className="col-span-4 flex flex-col justify-center">
+                           <p className="font-bold text-zinc-200 text-sm line-clamp-1">{ejercicio.nombre}</p>
+                           <input 
+                             type="text" 
+                             placeholder="Nota (Ej. Bajar lento...)" 
+                             value={ejercicio.notas_entrenador || ''} 
+                             onChange={(e) => actualizarEjercicio(ejercicio.id_unico, 'notas_entrenador', e.target.value)} 
+                             className="w-full mt-1.5 bg-zinc-950 border border-zinc-800 text-emerald-400 text-[10px] font-bold rounded-md px-2 py-1.5 focus:border-emerald-500 outline-none placeholder-zinc-700 transition" 
                            />
-                          </div>
+                         </div>
                          
                          <div className="col-span-2 flex flex-col items-center">
                            <span className="text-[9px] text-zinc-500 uppercase mb-1">Series</span>
@@ -344,7 +353,7 @@ function App() {
                          </div>
                          <div className="col-span-2 flex flex-col items-center">
                            <span className="text-[9px] text-zinc-500 uppercase mb-1">Reps</span>
-                           <input type="text" value={ejercicio.reps_objetivo} onChange={(e) => actualizarEjercicio(ejercicio.id_unico, 'reps_objetivo', e.target.value)} placeholder="Ej. 10-12" className="w-16 bg-zinc-950 border border-zinc-700 text-white text-center rounded-lg py-1 text-sm focus:border-blue-500 focus:outline-none" />
+                           <input type="text" value={ejercicio.reps_objetivo} onChange={(e) => actualizarEjercicio(ejercicio.id_unico, 'reps_objetivo', e.target.value)} placeholder="Ej. 10" className="w-16 bg-zinc-950 border border-zinc-700 text-white text-center rounded-lg py-1 text-sm focus:border-blue-500 focus:outline-none" />
                          </div>
                          <div className="col-span-2 flex flex-col items-center">
                            <span className="text-[9px] text-zinc-500 uppercase font-bold text-emerald-500 mb-1">RIR (Opc)</span>

@@ -7,6 +7,9 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
   const [diaHistorialActivo, setDiaHistorialActivo] = useState('');
   const [historialCliente, setHistorialCliente] = useState([]);
   
+  // 🌟 NUEVO ESTADO: Para las notas que tú escribes desde la web
+  const [notasSesion, setNotasSesion] = useState({});
+
   const [vistaProgreso, setVistaProgreso] = useState(vistaInicial || 'registro'); 
   const [tabAnalisis, setTabAnalisis] = useState('historial'); 
   const [cargando, setCargando] = useState(true);
@@ -112,7 +115,7 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
     const registrosAEnviar = [];
     
     ejerciciosDelDia.forEach(ej => {
-      ej.sets.forEach(set => {
+      ej.sets.forEach((set, setIndex) => {
         if (set.peso !== '' || set.reps !== '') {
           registrosAEnviar.push({
             ejercicio_id: ej.ejercicio_id, 
@@ -120,7 +123,9 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
             peso: set.peso === '' ? 0 : parseFloat(set.peso), 
             reps: parseInt(set.reps) || 0, 
             rir: set.rir || null,
-            tipo_serie: set.tipo_serie 
+            tipo_serie: set.tipo_serie,
+            // 🌟 Mandamos la nota solo en el primer set para no duplicar datos
+            notas_cliente: setIndex === 0 ? (notasSesion[ej.ejercicio_id] || '') : ''
           });
         }
       });
@@ -142,6 +147,7 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
 
       if (res.ok) {
         mostrarAlerta(`¡Entrenamiento guardado y volumen actualizado! 📈`, "exito");
+        setNotasSesion({}); // Limpiamos las notas después de guardar
         cargarDatosProgreso(); 
       } else {
         const data = await res.json();
@@ -238,8 +244,8 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
                        <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-black shrink-0">{index + 1}</div>
                        <div>
                          <p className="font-black text-white text-lg">{ej.nombre}</p>
-                         <p className="text-xs text-zinc-500 uppercase tracking-wider font-bold">Objetivo: {ej.series_objetivo} x {ej.reps_objetivo} {ej.rir_objetivo ? `(RIR ${ej.rir_objetivo})` : ''}</p>
-                         {/* 🌟 NOTA DEL ENTRENADOR VISIBLE AL REGISTRAR */}
+                         <p className="text-xs text-zinc-500 uppercase tracking-wider font-bold mb-1">Objetivo: {ej.series_objetivo} x {ej.reps_objetivo} {ej.rir_objetivo ? `(RIR ${ej.rir_objetivo})` : ''}</p>
+                         {/* 🌟 AQUÍ SE MUESTRA TU NOTA COMO ENTRENADOR */}
                          {ej.notas_entrenador && (
                            <p className="text-[10px] text-emerald-400 italic mt-1 bg-emerald-500/10 px-2 py-1 rounded-md inline-block border border-emerald-500/20">👨‍🏫 {ej.notas_entrenador}</p>
                          )}
@@ -278,6 +284,15 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
                         </div>
                       ))}
                       <button onClick={() => agregarSerieExtra(ej.ui_id)} className="mt-2 py-2 w-full border-2 border-dashed border-zinc-800 text-zinc-500 text-xs font-bold rounded-xl hover:border-zinc-600 hover:text-zinc-300 transition flex items-center justify-center gap-2"><span>➕</span> Añadir serie</button>
+                      
+                      {/* 🌟 AQUÍ ESTÁ EL INPUT PARA NOTAS DE LA SESIÓN EN LA WEB */}
+                      <input 
+                        type="text" 
+                        placeholder="📝 ¿Alguna molestia o nota de la sesión para este ejercicio?" 
+                        value={notasSesion[ej.ejercicio_id] || ''} 
+                        onChange={(e) => setNotasSesion({...notasSesion, [ej.ejercicio_id]: e.target.value})} 
+                        className="w-full mt-2 bg-zinc-950 border border-zinc-800 text-zinc-300 text-xs rounded-lg px-3 py-2.5 focus:border-blue-500 outline-none placeholder-zinc-600 transition" 
+                      />
                    </div>
                  </div>
                ))}
@@ -336,33 +351,40 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
                                 ejerAgrupados[r.ejercicio_nombre].push(r);
                               });
 
-                              return Object.keys(ejerAgrupados).map(nombreEj => (
-                                <div key={nombreEj} className="bg-zinc-900/40 p-4 rounded-xl border border-zinc-800/50 hover:border-zinc-700 transition-colors">
-                                  <p className="text-sm font-black text-blue-400 mb-3 line-clamp-1">{nombreEj}</p>
-                                  <div className="grid grid-cols-2 gap-3">
-                                     {ejerAgrupados[nombreEj].map(set => {
-                                        const estilo = getEstiloCajaHistorial(set.tipo_serie);
-                                        return (
-                                          <div key={set.serie_numero} className={`px-3 py-2 rounded-lg border flex flex-col transition-colors ${estilo.bg}`}>
-                                            <span className={`text-[9px] font-black uppercase tracking-wider mb-0.5 ${estilo.badge}`}>
-                                              Set {set.serie_numero} {set.tipo_serie && set.tipo_serie !== 'Efectiva' ? `• ${set.tipo_serie}` : ''}
-                                            </span>
-                                            <span className="text-white font-medium text-sm flex items-center gap-1">
-                                              {set.peso_kg} kg <span className="text-zinc-500 text-[10px] mx-1">x</span> {set.repeticiones}
-                                              {set.rir && <span className="text-emerald-500 text-[10px] ml-auto border border-emerald-500/30 px-1 rounded">RIR {set.rir}</span>}
-                                            </span>
-                                            {/* 🌟 AQUÍ SE IMPRIME LA NOTA DEL CLIENTE SIN ERROR */}
-                                            {set.notas_cliente && (
-                                              <p className="text-[10px] text-zinc-400 italic mt-1.5 border-l-2 border-zinc-700 pl-2">
-                                                "{set.notas_cliente}"
-                                              </p>
-                                            )}
-                                          </div>
-                                        );
-                                     })}
+                              return Object.keys(ejerAgrupados).map(nombreEj => {
+                                // 🌟 EXTRAEMOS LA NOTA DEL CLIENTE (Si existe en alguno de los sets de este ejercicio)
+                                const notaDelCliente = ejerAgrupados[nombreEj].find(set => set.notas_cliente)?.notas_cliente;
+
+                                return (
+                                  <div key={nombreEj} className="bg-zinc-900/40 p-4 rounded-xl border border-zinc-800/50 hover:border-zinc-700 transition-colors">
+                                    <p className="text-sm font-black text-blue-400 mb-3 line-clamp-1">{nombreEj}</p>
+                                    
+                                    <div className="grid grid-cols-2 gap-3 mb-3">
+                                       {ejerAgrupados[nombreEj].map(set => {
+                                          const estilo = getEstiloCajaHistorial(set.tipo_serie);
+                                          return (
+                                            <div key={set.serie_numero} className={`px-3 py-2 rounded-lg border flex flex-col transition-colors ${estilo.bg}`}>
+                                              <span className={`text-[9px] font-black uppercase tracking-wider mb-0.5 ${estilo.badge}`}>
+                                                Set {set.serie_numero} {set.tipo_serie && set.tipo_serie !== 'Efectiva' ? `• ${set.tipo_serie}` : ''}
+                                              </span>
+                                              <span className="text-white font-medium text-sm flex items-center gap-1">
+                                                {set.peso_kg} kg <span className="text-zinc-500 text-[10px] mx-1">x</span> {set.repeticiones}
+                                                {set.rir && <span className="text-emerald-500 text-[10px] ml-auto border border-emerald-500/30 px-1 rounded">RIR {set.rir}</span>}
+                                              </span>
+                                            </div>
+                                          );
+                                       })}
+                                    </div>
+
+                                    {/* 🌟 AQUÍ SE IMPRIME LA NOTA DEL CLIENTE DE FORMA SEGURA */}
+                                    {notaDelCliente && (
+                                      <div className="mt-2 bg-zinc-950/50 border-l-2 border-emerald-500 p-2 rounded-r-lg">
+                                        <p className="text-[10px] text-zinc-400 italic">"{notaDelCliente}"</p>
+                                      </div>
+                                    )}
                                   </div>
-                                </div>
-                              ));
+                                );
+                              });
                            })()}
                          </div>
                        </div>
