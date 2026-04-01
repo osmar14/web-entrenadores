@@ -7,12 +7,14 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
   const [diaHistorialActivo, setDiaHistorialActivo] = useState('');
   const [historialCliente, setHistorialCliente] = useState([]);
   
-  // 🌟 NUEVO ESTADO: Para las notas que tú escribes desde la web
   const [notasSesion, setNotasSesion] = useState({});
 
   const [vistaProgreso, setVistaProgreso] = useState(vistaInicial || 'registro'); 
   const [tabAnalisis, setTabAnalisis] = useState('historial'); 
   const [cargando, setCargando] = useState(true);
+
+  // 🌟 NUEVO ESTADO: Para los días del historial (incluyendo los 'Extras')
+  const [diasHistorialDisponibles, setDiasHistorialDisponibles] = useState([]);
 
   useEffect(() => {
     if (vistaInicial) {
@@ -124,7 +126,6 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
             reps: parseInt(set.reps) || 0, 
             rir: set.rir || null,
             tipo_serie: set.tipo_serie,
-            // 🌟 Mandamos la nota solo en el primer set para no duplicar datos
             notas_cliente: setIndex === 0 ? (notasSesion[ej.ejercicio_id] || '') : ''
           });
         }
@@ -147,7 +148,7 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
 
       if (res.ok) {
         mostrarAlerta(`¡Entrenamiento guardado y volumen actualizado! 📈`, "exito");
-        setNotasSesion({}); // Limpiamos las notas después de guardar
+        setNotasSesion({}); 
         cargarDatosProgreso(); 
       } else {
         const data = await res.json();
@@ -158,13 +159,34 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
     }
   };
 
+  // 🌟 CORRECCIÓN DEL SESGO DE PLANTILLA 🌟
   const historialEnriquecido = historialCliente.map(registro => {
+    // 1. Buscamos si el ejercicio está en la plantilla
     const ejInfo = ejerciciosProgreso.find(e => e.ejercicio_id === registro.ejercicio_id);
+    
+    // 2. Si está en la plantilla, le asignamos su día. 
+    // Si NO está (fue agregado manual por el cliente), revisamos si el registro de la BD trae un 'dia_nombre'.
+    // Si la BD no lo trae, lo clasificamos como 'Extras del Cliente' para no perderlo.
+    const diaAsignado = ejInfo 
+        ? ejInfo.dia_nombre 
+        : (registro.dia_nombre || 'Extras del Cliente');
+
     return {
       ...registro,
-      dia_nombre: ejInfo ? ejInfo.dia_nombre : 'Desconocido'
+      dia_nombre: diaAsignado
     };
   });
+
+  // 🌟 CALCULAMOS LOS DÍAS DISPONIBLES EN EL HISTORIAL (Para mostrar el botón de "Extras")
+  useEffect(() => {
+    if (historialEnriquecido.length > 0) {
+        const diasUnicosHistorial = [...new Set(historialEnriquecido.map(h => h.dia_nombre))];
+        setDiasHistorialDisponibles(diasUnicosHistorial);
+    } else {
+        setDiasHistorialDisponibles(diasProgreso);
+    }
+  }, [historialCliente, ejerciciosProgreso]); // Se recalcula si cambian los datos de la BD o la plantilla
+
 
   const historialDelDiaActivo = historialEnriquecido.filter(h => h.dia_nombre === diaHistorialActivo);
 
@@ -245,7 +267,6 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
                        <div>
                          <p className="font-black text-white text-lg">{ej.nombre}</p>
                          <p className="text-xs text-zinc-500 uppercase tracking-wider font-bold mb-1">Objetivo: {ej.series_objetivo} x {ej.reps_objetivo} {ej.rir_objetivo ? `(RIR ${ej.rir_objetivo})` : ''}</p>
-                         {/* 🌟 AQUÍ SE MUESTRA TU NOTA COMO ENTRENADOR */}
                          {ej.notas_entrenador && (
                            <p className="text-[10px] text-emerald-400 italic mt-1 bg-emerald-500/10 px-2 py-1 rounded-md inline-block border border-emerald-500/20">👨‍🏫 {ej.notas_entrenador}</p>
                          )}
@@ -285,7 +306,6 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
                       ))}
                       <button onClick={() => agregarSerieExtra(ej.ui_id)} className="mt-2 py-2 w-full border-2 border-dashed border-zinc-800 text-zinc-500 text-xs font-bold rounded-xl hover:border-zinc-600 hover:text-zinc-300 transition flex items-center justify-center gap-2"><span>➕</span> Añadir serie</button>
                       
-                      {/* 🌟 AQUÍ ESTÁ EL INPUT PARA NOTAS DE LA SESIÓN EN LA WEB */}
                       <input 
                         type="text" 
                         placeholder="📝 ¿Alguna molestia o nota de la sesión para este ejercicio?" 
@@ -321,9 +341,10 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
                <div className="px-8 pt-6 border-b border-zinc-800 pb-4 shrink-0">
                   <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-3">Filtrar historial por entrenamiento:</p>
                   <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-                     {diasProgreso.map(dia => (
-                       <button key={dia} onClick={() => setDiaHistorialActivo(dia)} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-colors ${diaHistorialActivo === dia ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'text-zinc-500 hover:bg-zinc-800/50'}`}>
-                         {dia}
+                     {/* 🌟 USAMOS LA NUEVA LISTA DE DÍAS (INCLUYE "EXTRAS") */}
+                     {diasHistorialDisponibles.map(dia => (
+                       <button key={dia} onClick={() => setDiaHistorialActivo(dia)} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-colors whitespace-nowrap ${diaHistorialActivo === dia ? (dia === 'Extras del Cliente' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20') : 'text-zinc-500 hover:bg-zinc-800/50'}`}>
+                         {dia === 'Extras del Cliente' ? '🌟 Extras del Cliente' : dia}
                        </button>
                      ))}
                   </div>
@@ -352,7 +373,6 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
                               });
 
                               return Object.keys(ejerAgrupados).map(nombreEj => {
-                                // 🌟 EXTRAEMOS LA NOTA DEL CLIENTE (Si existe en alguno de los sets de este ejercicio)
                                 const notaDelCliente = ejerAgrupados[nombreEj].find(set => set.notas_cliente)?.notas_cliente;
 
                                 return (
@@ -376,7 +396,6 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
                                        })}
                                     </div>
 
-                                    {/* 🌟 AQUÍ SE IMPRIME LA NOTA DEL CLIENTE DE FORMA SEGURA */}
                                     {notaDelCliente && (
                                       <div className="mt-2 bg-zinc-950/50 border-l-2 border-emerald-500 p-2 rounded-r-lg">
                                         <p className="text-[10px] text-zinc-400 italic">"{notaDelCliente}"</p>
