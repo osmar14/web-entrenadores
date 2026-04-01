@@ -54,66 +54,73 @@ function App() {
     setTimeout(() => setNotificacion(null), 3000); 
   };
 
-  const cargarDatos = () => {
+  // 🛡️ 1. CARGAR DATOS BLINDADO
+  const cargarDatos = async () => {
     if (!usuarioActual) return; 
 
-    const headersSeguros = {
-      'Content-Type': 'application/json',
-      'usuario-email': usuarioActual.email 
-    };
+    try {
+      const token = await usuarioActual.getIdToken();
+      const headersSeguros = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}` 
+      };
 
-    fetch('https://backend-entrenadores-production.up.railway.app/api/clientes', { headers: headersSeguros })
-      .then(res => res.json())
-      .then(datos => {
-          if (Array.isArray(datos)) {
-              setTotalClientes(datos.length); 
-              setListaClientes(datos); 
-          }
-      }).catch(e => console.error(e));
+      const resClientes = await fetch('https://backend-entrenadores-production.up.railway.app/api/clientes', { headers: headersSeguros });
+      const datosClientes = await resClientes.json();
+      if (Array.isArray(datosClientes)) {
+          setTotalClientes(datosClientes.length); 
+          setListaClientes(datosClientes); 
+      }
 
-    fetch('https://backend-entrenadores-production.up.railway.app/api/rutinas', { headers: headersSeguros })
-      .then(res => res.json())
-      .then(datos => {
-          if (Array.isArray(datos)) {
-              setTodasLasRutinas(datos); 
-              const plantillas = datos.filter(r => r.es_plantilla === 1); 
-              setTotalRutinas(plantillas.length); 
-              setListaRutinas(plantillas); 
-          } else {
-              mostrarAlerta(datos.error || "Error de permisos", "error");
-          }
-      }).catch(e => console.error(e));
+      const resRutinas = await fetch('https://backend-entrenadores-production.up.railway.app/api/rutinas', { headers: headersSeguros });
+      const datosRutinas = await resRutinas.json();
+      if (Array.isArray(datosRutinas)) {
+          setTodasLasRutinas(datosRutinas); 
+          const plantillas = datosRutinas.filter(r => r.es_plantilla === 1); 
+          setTotalRutinas(plantillas.length); 
+          setListaRutinas(plantillas); 
+      } else {
+          mostrarAlerta(datosRutinas.error || "Error de permisos", "error");
+      }
 
-    fetch('https://backend-entrenadores-production.up.railway.app/api/ejercicios')
-      .then(res => res.json())
-      .then(datos => {
-          if (Array.isArray(datos)) setCatalogoEjercicios(datos);
-      }).catch(e => console.error(e));
+      const resEjercicios = await fetch('https://backend-entrenadores-production.up.railway.app/api/ejercicios');
+      const datosEjercicios = await resEjercicios.json();
+      if (Array.isArray(datosEjercicios)) setCatalogoEjercicios(datosEjercicios);
+
+    } catch (e) { console.error("Error de conexión:", e); }
   }
 
   useEffect(() => { 
     if (usuarioActual) cargarDatos();
   }, [usuarioActual]);
 
+  // 🛡️ 2. CLONAR RUTINA BLINDADO
   const handleClonarRutina = async (plantilla_id, cliente_id) => {
     try {
+      const token = await usuarioActual.getIdToken();
       const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/rutinas/clonar', {
         method: 'POST', 
-        headers: { 'Content-Type': 'application/json', 'usuario-email': usuarioActual.email }, 
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}` 
+        }, 
         body: JSON.stringify({ plantilla_id, cliente_id })
       });
       if (res.ok) { mostrarAlerta("Plan asignado exitosamente al cliente 🪄", "exito"); cargarDatos(); } 
+      else { mostrarAlerta("Error al clonar", "error"); }
     } catch (e) { mostrarAlerta("Hubo un error de conexión", "error"); }
   }
 
+  // 🛡️ 3. ELIMINAR RUTINA BLINDADO
   const handleEliminarRutina = (rutina_id) => {
     setConfirmacion({
       mensaje: "¿Estás seguro de eliminar este plan? Esta acción destruirá todos los datos y no se puede deshacer.",
       onConfirm: async () => {
         try {
+          const token = await usuarioActual.getIdToken();
           const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/rutinas/${rutina_id}`, { 
             method: 'DELETE',
-            headers: { 'usuario-email': usuarioActual.email }
+            headers: { 'Authorization': `Bearer ${token}` }
           });
           if (res.ok) { mostrarAlerta("Plan eliminado con éxito 🗑️", "exito"); setVistaActiva('rutinas'); cargarDatos(); }
         } catch (e) { console.error(e); }
@@ -122,15 +129,20 @@ function App() {
     });
   }
 
+  // 🛡️ 4. ABRIR CONSTRUCTOR BLINDADO
   const abrirConstructor = async (rutina) => {
     setRutinaSeleccionada(rutina); 
     setVistaActiva('constructor');
     
     try {
-      const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/rutina-ejercicios/${rutina.id}`);
+      const token = await usuarioActual.getIdToken();
+      const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/rutina-ejercicios/${rutina.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
       const datosCargados = await res.json();
       
-      if (datosCargados.length > 0) {
+      if (Array.isArray(datosCargados) && datosCargados.length > 0) {
         const ejerciciosRecuperados = datosCargados.map(e => ({
           id: e.ejercicio_id, 
           id_unico: e.id, 
@@ -156,12 +168,17 @@ function App() {
     }
   }
 
+  // 🛡️ 5. GUARDAR RUTINA (CREAR) BLINDADO
   const handleGuardarRutina = async () => {
     if (!nuevaRutina.nombre) return mostrarAlerta("¡El nombre de la plantilla es obligatorio!", "error");
     try {
+      const token = await usuarioActual.getIdToken();
       const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/rutinas', { 
         method: 'POST', 
-        headers: { 'Content-Type': 'application/json', 'usuario-email': usuarioActual.email }, 
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}` 
+        }, 
         body: JSON.stringify(nuevaRutina) 
       });
       const data = await res.json(); 
@@ -170,15 +187,22 @@ function App() {
         setNuevaRutina({ ...nuevaRutina, id: data.id }); 
         setPasoModal('exito'); 
         cargarDatos(); 
+      } else {
+        mostrarAlerta(data.error || "Error del servidor", "error");
       }
     } catch (e) { mostrarAlerta("Error al guardar rutina", "error"); }
   }
 
+  // 🛡️ 6. GUARDAR PLAN DE VUELO (EJERCICIOS) BLINDADO
   const handleGuardarPlanDeVuelo = async () => {
     try {
+      const token = await usuarioActual.getIdToken();
       const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/rutina-ejercicios', {
         method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        }, 
         body: JSON.stringify({ rutina_id: rutinaSeleccionada.id, ejercicios: ejerciciosEnRutina })
       });
       if (res.ok) { mostrarAlerta("¡Plan de vuelo guardado en la bóveda! 🚀", "exito"); setVistaActiva(rutinaSeleccionada.cliente_id ? 'clientes' : 'rutinas'); }
