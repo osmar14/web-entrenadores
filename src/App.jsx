@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import Login from './vistas/Login';
 import Inicio from './vistas/Inicio'
 import Clientes from './vistas/Clientes'
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 import { auth } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
+
 
 function App() {
   const [usuarioActual, setUsuarioActual] = useState(null);
@@ -248,6 +250,34 @@ function App() {
     setEjerciciosEnRutina(ejerciciosEnRutina.filter(e => e.dia_nombre !== diaActivo));
     setDiaActivo(nuevosDias[0]);
   }
+
+  const onDragEnd = (result) => {
+    // Si lo suelta fuera del área, no hacemos nada
+    if (!result.destination) return; 
+
+    const sourceIndex = result.source.index;
+    const destinationIndex = result.destination.index;
+
+    if (sourceIndex === destinationIndex) return;
+
+    // Separamos los ejercicios del día actual de los demás días
+    const ejerciciosDiaActual = ejerciciosEnRutina.filter(e => e.dia_nombre === diaActivo);
+    const ejerciciosOtrosDias = ejerciciosEnRutina.filter(e => e.dia_nombre !== diaActivo);
+
+    // Reordenamos visualmente el arreglo del día actual
+    const reordenados = Array.from(ejerciciosDiaActual);
+    const [ejercicioMovido] = reordenados.splice(sourceIndex, 1);
+    reordenados.splice(destinationIndex, 0, ejercicioMovido);
+
+    // 🌟 INYECCIÓN PRO: Actualizamos la propiedad "orden" basándonos en su nueva posición
+    const actualizadosConOrden = reordenados.map((ej, index) => ({
+      ...ej,
+      orden: index
+    }));
+
+    // Juntamos todo de nuevo y actualizamos el estado
+    setEjerciciosEnRutina([...ejerciciosOtrosDias, ...actualizadosConOrden]);
+  };
   
   const ejerciciosDelDia = ejerciciosEnRutina.filter(e => e.dia_nombre === diaActivo)
 
@@ -356,46 +386,79 @@ function App() {
                      <p className="text-zinc-500 text-sm">Busca en el catálogo y agrega ejercicios para esta sesión.</p>
                    </div>
                  ) : (
-                   <div className="flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 md:pr-2">
-                     {ejerciciosDelDia.map((ejercicio, index) => (
-                       <div key={ejercicio.id_unico} className="flex flex-col md:grid md:grid-cols-12 gap-3 md:gap-4 items-start md:items-center bg-zinc-900 border border-zinc-800 p-4 rounded-xl relative">
-                         <div className="hidden md:block col-span-1 text-center font-black text-zinc-600">{index + 1}</div>
+                   <DragDropContext onDragEnd={onDragEnd}>
+                     <Droppable droppableId={`droppable-${diaActivo}`}>
+                       {(provided) => (
+                         <div 
+                           {...provided.droppableProps} 
+                           ref={provided.innerRef}
+                           className="flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-1 md:pr-2 pb-20"
+                         >
+                           {ejerciciosDelDia
+                              .sort((a, b) => (a.orden || 0) - (b.orden || 0))
+                              .map((ejercicio, index) => (
+                             <Draggable key={ejercicio.id_unico.toString()} draggableId={ejercicio.id_unico.toString()} index={index}>
+                               {(provided, snapshot) => (
+                                 <div 
+                                   ref={provided.innerRef}
+                                   {...provided.draggableProps}
+                                   className={`flex flex-col md:grid md:grid-cols-12 gap-3 md:gap-4 items-start md:items-center bg-zinc-900 border p-4 rounded-xl relative transition-shadow ${snapshot.isDragging ? 'border-blue-500 shadow-2xl shadow-blue-500/20 z-50 scale-[1.02]' : 'border-zinc-800'}`}
+                                 >
+                                   {/* 🌟 BOTÓN DE ARRASTRE (GRIP) */}
+                                   <div className="hidden md:flex col-span-1 justify-center items-center">
+                                      <div {...provided.dragHandleProps} className="p-2 text-zinc-600 hover:text-white cursor-grab active:cursor-grabbing">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                                      </div>
+                                   </div>
 
-                         {/* Mobile Top Row: Name, Notes & Delete */}
-                         <div className="w-full md:col-span-4 flex flex-col justify-center pr-6 md:pr-0">
-                           <p className="font-bold text-zinc-200 text-sm"><span className="md:hidden text-zinc-500 mr-1">{index + 1}.</span>{ejercicio.nombre}</p>
-                           <input 
-                             type="text" 
-                             placeholder="Nota (Ej. Bajar lento...)" 
-                             value={ejercicio.notas_entrenador || ''} 
-                             onChange={(e) => actualizarEjercicio(ejercicio.id_unico, 'notas_entrenador', e.target.value)} 
-                             className="w-full mt-2 md:mt-1.5 bg-zinc-950 border border-zinc-800 text-emerald-400 text-xs md:text-[10px] font-bold rounded-md px-2 py-2 md:py-1.5 focus:border-emerald-500 outline-none placeholder-zinc-700 transition" 
-                           />
-                         </div>
-                         
-                         {/* Mobile Bottom Row: Metrics */}
-                         <div className="w-full md:w-auto md:col-span-6 flex flex-row justify-between md:grid md:grid-cols-6 gap-2 mt-2 md:mt-0 bg-zinc-950/50 md:bg-transparent p-2 md:p-0 rounded-lg border border-zinc-800/50 md:border-none">
-                           <div className="flex flex-col items-center md:col-span-2 flex-1">
-                             <span className="text-[10px] md:text-[9px] text-zinc-500 uppercase mb-1">Series</span>
-                             <input type="number" value={ejercicio.series_objetivo} onChange={(e) => actualizarEjercicio(ejercicio.id_unico, 'series_objetivo', e.target.value)} className="w-full max-w-[60px] md:w-14 bg-zinc-950 border border-zinc-700 text-white text-center rounded-lg py-1.5 md:py-1 text-sm focus:border-blue-500 focus:outline-none" />
-                           </div>
-                           <div className="flex flex-col items-center md:col-span-2 flex-1 border-l border-r border-zinc-800 md:border-none">
-                             <span className="text-[10px] md:text-[9px] text-zinc-500 uppercase mb-1">Reps</span>
-                             <input type="text" value={ejercicio.reps_objetivo} onChange={(e) => actualizarEjercicio(ejercicio.id_unico, 'reps_objetivo', e.target.value)} placeholder="Ej. 10" className="w-full max-w-[70px] md:w-16 bg-zinc-950 border border-zinc-700 text-white text-center rounded-lg py-1.5 md:py-1 text-sm focus:border-blue-500 focus:outline-none" />
-                           </div>
-                           <div className="flex flex-col items-center md:col-span-2 flex-1">
-                             <span className="text-[10px] md:text-[9px] text-zinc-500 uppercase font-bold text-emerald-500 mb-1">RIR</span>
-                             <input type="text" value={ejercicio.rir_objetivo} onChange={(e) => actualizarEjercicio(ejercicio.id_unico, 'rir_objetivo', e.target.value)} placeholder="Ej. 1-2" className="w-full max-w-[60px] md:w-14 bg-zinc-950 border border-emerald-900 text-emerald-400 text-center rounded-lg py-1.5 md:py-1 text-sm focus:border-emerald-500 focus:outline-none" />
-                           </div>
-                         </div>
+                                   {/* Top Row: Name, Notes & Delete */}
+                                   <div className="w-full md:col-span-4 flex flex-col justify-center pr-6 md:pr-0">
+                                     <div className="flex items-center gap-2">
+                                       {/* Botón de arrastre en móvil */}
+                                       <div {...provided.dragHandleProps} className="md:hidden p-1 text-zinc-600 active:text-white cursor-grab">
+                                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/></svg>
+                                       </div>
+                                       <p className="font-bold text-zinc-200 text-sm">{ejercicio.nombre}</p>
+                                     </div>
+                                     <input 
+                                       type="text" 
+                                       placeholder="Nota (Ej. Bajar lento...)" 
+                                       value={ejercicio.notas_entrenador || ''} 
+                                       onChange={(e) => actualizarEjercicio(ejercicio.id_unico, 'notas_entrenador', e.target.value)} 
+                                       className="w-full mt-2 md:mt-1.5 bg-zinc-950 border border-zinc-800 text-emerald-400 text-xs md:text-[10px] font-bold rounded-md px-2 py-2 md:py-1.5 focus:border-emerald-500 outline-none placeholder-zinc-700 transition" 
+                                     />
+                                   </div>
+                                   
+                                   {/* Bottom Row: Metrics */}
+                                   <div className="w-full md:w-auto md:col-span-6 flex flex-row justify-between md:grid md:grid-cols-6 gap-2 mt-2 md:mt-0 bg-zinc-950/50 md:bg-transparent p-2 md:p-0 rounded-lg border border-zinc-800/50 md:border-none">
+                                     <div className="flex flex-col items-center md:col-span-2 flex-1">
+                                       <span className="text-[10px] md:text-[9px] text-zinc-500 uppercase mb-1">Series</span>
+                                       <input type="number" value={ejercicio.series_objetivo} onChange={(e) => actualizarEjercicio(ejercicio.id_unico, 'series_objetivo', e.target.value)} className="w-full max-w-[60px] md:w-14 bg-zinc-950 border border-zinc-700 text-white text-center rounded-lg py-1.5 md:py-1 text-sm focus:border-blue-500 focus:outline-none" />
+                                     </div>
+                                     <div className="flex flex-col items-center md:col-span-2 flex-1 border-l border-r border-zinc-800 md:border-none">
+                                       <span className="text-[10px] md:text-[9px] text-zinc-500 uppercase mb-1">Reps</span>
+                                       <input type="text" value={ejercicio.reps_objetivo} onChange={(e) => actualizarEjercicio(ejercicio.id_unico, 'reps_objetivo', e.target.value)} placeholder="Ej. 10" className="w-full max-w-[70px] md:w-16 bg-zinc-950 border border-zinc-700 text-white text-center rounded-lg py-1.5 md:py-1 text-sm focus:border-blue-500 focus:outline-none" />
+                                     </div>
+                                     <div className="flex flex-col items-center md:col-span-2 flex-1">
+                                       <span className="text-[10px] md:text-[9px] text-zinc-500 uppercase font-bold text-emerald-500 mb-1">RIR</span>
+                                       <input type="text" value={ejercicio.rir_objetivo} onChange={(e) => actualizarEjercicio(ejercicio.id_unico, 'rir_objetivo', e.target.value)} placeholder="Ej. 1-2" className="w-full max-w-[60px] md:w-14 bg-zinc-950 border border-emerald-900 text-emerald-400 text-center rounded-lg py-1.5 md:py-1 text-sm focus:border-emerald-500 focus:outline-none" />
+                                     </div>
+                                   </div>
 
-                         <div className="absolute top-2 right-2 md:static md:col-span-1 flex justify-end">
-                           <button onClick={() => quitarDelConstructor(ejercicio.id_unico)} className="text-zinc-600 hover:text-red-400 font-bold p-2 bg-zinc-950 md:bg-transparent rounded-lg border border-zinc-800 md:border-none">✕</button>
+                                   <div className="absolute top-2 right-2 md:static md:col-span-1 flex justify-end">
+                                     <button onClick={() => quitarDelConstructor(ejercicio.id_unico)} className="text-zinc-600 hover:text-red-400 font-bold p-2 bg-zinc-950 md:bg-transparent rounded-lg border border-zinc-800 md:border-none">✕</button>
+                                   </div>
+                                 </div>
+                               )}
+                             </Draggable>
+                           ))}
+                           {provided.placeholder}
                          </div>
-                       </div>
-                     ))}
-                   </div>
+                       )}
+                     </Droppable>
+                   </DragDropContext>
                  )}
+
               </div>
             </div>
           </div>
