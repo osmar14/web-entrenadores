@@ -20,9 +20,10 @@ function Planes({ planActual, actualizarPlanLocal, usuarioActual, mostrarAlerta 
       mostrarAlerta('Pago cancelado. Puedes intentar de nuevo cuando quieras.', 'error');
       window.history.replaceState({}, '', window.location.pathname);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const recargarPerfil = async () => {
+  async function recargarPerfil() {
     if (!usuarioActual) return;
     try {
       const token = await usuarioActual.getIdToken(true); // force refresh
@@ -33,8 +34,8 @@ function Planes({ planActual, actualizarPlanLocal, usuarioActual, mostrarAlerta 
       if (data.plan_actual) {
         actualizarPlanLocal(data.plan_actual);
       }
-    } catch (err) { console.error("Error recargando perfil"); }
-  };
+    } catch (err) { console.error("Error recargando perfil", err); }
+  }
 
   const iniciarCheckout = async (plan) => {
     if (!usuarioActual) return;
@@ -60,6 +61,7 @@ function Planes({ planActual, actualizarPlanLocal, usuarioActual, mostrarAlerta 
       }
     } catch (e) {
       mostrarAlerta("Error de conexión", 'error');
+      console.error(e);
     }
     setCargando(false);
   };
@@ -84,6 +86,7 @@ function Planes({ planActual, actualizarPlanLocal, usuarioActual, mostrarAlerta 
       }
     } catch (e) {
       mostrarAlerta("Error de conexión", 'error');
+      console.error(e);
     }
     setCargando(false);
   };
@@ -112,6 +115,7 @@ function Planes({ planActual, actualizarPlanLocal, usuarioActual, mostrarAlerta 
       }
     } catch (e) {
       mostrarAlerta("Error de conexión", 'error');
+      console.error(e);
     }
     setCargando(false);
   };

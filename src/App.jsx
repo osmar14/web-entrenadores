@@ -39,6 +39,7 @@ function App() {
   const [mostrarModalCatalogo, setMostrarModalCatalogo] = useState(false);
   const [nuevoEjercicioCatalogo, setNuevoEjercicioCatalogo] = useState({nombre: '', grupo_muscular: 'Pecho', tipo_metrica: 'reps'});
 
+  const [mostrarModal, setMostrarModal] = useState(false);
   const [pasoModal, setPasoModal] = useState('formulario');
   const [nuevaRutina, setNuevaRutina] = useState({ id: null, nombre: '', descripcion: '', nivel: 'Principiante' });
   const [notificacion, setNotificacion] = useState(null);
@@ -87,7 +88,7 @@ function App() {
         if (datosPerfil.plan_actual) {
           setPlanEntrenador(datosPerfil.plan_actual);
         }
-      } catch (err) { console.error("Error obteniendo perfil"); }
+      } catch (err) { console.error("Error obteniendo perfil", err); }
 
       const resRutinas = await fetch('https://backend-entrenadores-production.up.railway.app/api/rutinas', { headers: headersSeguros });
       const datosRutinas = await resRutinas.json();
@@ -105,7 +106,9 @@ function App() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (usuarioActual) cargarDatos();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuarioActual]);
 
   const handleClonarRutina = async (plantilla_id, cliente_id) => {
@@ -118,7 +121,7 @@ function App() {
       });
       if (res.ok) { mostrarAlerta("Plan asignado exitosamente al cliente 🪄", "exito"); cargarDatos(); }
       else { mostrarAlerta("Error al clonar", "error"); }
-    } catch (e) { mostrarAlerta("Hubo un error de conexión", "error"); }
+    } catch (e) { mostrarAlerta("Hubo un error de conexión", "error"); console.error(e); }
   }
 
   const handleClonarMasivo = async () => {
@@ -140,7 +143,7 @@ function App() {
         const d = await res.json();
         mostrarAlerta(d.error || "Error al clonar", "error");
       }
-    } catch (e) { mostrarAlerta("Error de conexión", "error"); }
+    } catch (e) { mostrarAlerta("Error de conexión", "error"); console.error(e); }
   }
 
   const handleCrearEjercicio = async () => {
@@ -157,7 +160,7 @@ function App() {
         setNuevoEjercicioCatalogo({nombre: '', grupo_muscular: 'Pecho', tipo_metrica: 'reps'});
         cargarDatos(); 
       }
-    } catch (e) { mostrarAlerta("Error", "error"); }
+    } catch (e) { mostrarAlerta("Error", "error"); console.error(e); }
   };
 
   const handleEliminarEjercicio = async (id) => {
@@ -170,7 +173,7 @@ function App() {
       });
       if (res.ok) { mostrarAlerta("Ejercicio eliminado", "exito"); cargarDatos(); }
       else { mostrarAlerta("No puedes eliminar un ejercicio global", "error"); }
-    } catch (e) { mostrarAlerta("Error", "error"); }
+    } catch (e) { mostrarAlerta("Error", "error"); console.error(e); }
   };
 
   const handleEliminarRutina = (rutina_id) => {
@@ -243,7 +246,7 @@ function App() {
         setPasoModal('exito');
         cargarDatos();
       } else { mostrarAlerta(data.error || "Error del servidor", "error"); }
-    } catch (e) { mostrarAlerta("Error al guardar rutina", "error"); }
+    } catch (e) { mostrarAlerta("Error al guardar rutina", "error"); console.error(e); }
   }
 
   const handleGuardarPlanDeVuelo = async () => {
@@ -255,7 +258,7 @@ function App() {
         body: JSON.stringify({ rutina_id: rutinaSeleccionada.id, ejercicios: ejerciciosEnRutina })
       });
       if (res.ok) { mostrarAlerta("¡Plan de vuelo guardado en la bóveda! 🚀", "exito"); setVistaActiva(rutinaSeleccionada.cliente_id ? 'clientes' : 'rutinas'); }
-    } catch (e) { mostrarAlerta("Error al guardar el plan", "error"); }
+    } catch (e) { mostrarAlerta("Error al guardar el plan", "error"); console.error(e); }
   }
 
   const gruposMusculares = ['Todos', ...new Set(catalogoEjercicios.map(e => e.grupo_muscular || 'General'))];

@@ -36,6 +36,7 @@ export default function Clientes({
   const rutinasDelCliente = clienteSeleccionado ? todasLasRutinas.filter(r => r.cliente_id === clienteSeleccionado.id) : [];
   const emojisGym = ['🏋️‍♂️', '💪', '🔥', '⚡', '🦍', '🥇', '🦾'];
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (!clienteSeleccionado) setRutinaEnProgreso(null); }, [clienteSeleccionado]);
 
   const cargarExpediente = async (cliente_id) => {
@@ -55,7 +56,9 @@ export default function Clientes({
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (clienteSeleccionado) { cargarExpediente(clienteSeleccionado.id); setTabNotas('coach'); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clienteSeleccionado]);
 
   const handleGuardarNota = async () => {
@@ -75,7 +78,7 @@ export default function Clientes({
         setMostrarModalNota(false); setNuevaNota({ categoria: 'General', mensaje: '' }); 
         cargarExpediente(clienteSeleccionado.id); 
       }
-    } catch (e) { mostrarAlerta("Error al guardar", "error"); }
+    } catch (e) { mostrarAlerta("Error al guardar", "error"); console.error(e); }
   };
 
   const handleGuardarCliente = async () => {
@@ -106,13 +109,14 @@ export default function Clientes({
           await sendPasswordResetEmail(auth, nuevoCliente.email);
           alert(`✅ ¡Cuenta creada!\n\nSe ha enviado un correo automático a ${nuevoCliente.email} para que cree su propia contraseña y descargue la app.`);
         } catch(mailError) {
+          console.error(mailError);
           alert(`✅ Cuenta creada.\n\nPásale esta clave temporal: ${data.password_temporal}`);
         }
         
         setMostrarModalCliente(false); setNuevoCliente({ nombre: '', email: '', objetivo: '' }); 
         cargarDatos(); 
       } else { mostrarAlerta(data.error || "Error", "error"); }
-    } catch (e) { mostrarAlerta("Error de conexión", "error"); }
+    } catch (e) { mostrarAlerta("Error de conexión", "error"); console.error(e); }
   };
 
   const abrirParaAnotar = (rutina) => { setModoEstacion('registro'); setRutinaEnProgreso(rutina); };

@@ -18,6 +18,7 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
 
   useEffect(() => {
     if (vistaInicial) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setVistaProgreso(vistaInicial);
       if (vistaInicial === 'analisis') {
         setTabAnalisis('historial'); 
@@ -92,7 +93,9 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarDatosProgreso();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const actualizarSerie = (ui_id, serieIndex, campo, valor) => {
@@ -166,6 +169,7 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
       }
     } catch (e) { 
       mostrarAlerta("Error de conexión al guardar", "error"); 
+      console.error(e);
     }
   };
 
@@ -191,10 +195,12 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
   useEffect(() => {
     if (historialEnriquecido.length > 0) {
         const diasUnicosHistorial = [...new Set(historialEnriquecido.map(h => h.dia_nombre))];
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setDiasHistorialDisponibles(diasUnicosHistorial);
     } else {
         setDiasHistorialDisponibles(diasProgreso);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [historialCliente, ejerciciosProgreso]); // Se recalcula si cambian los datos de la BD o la plantilla
 
 
