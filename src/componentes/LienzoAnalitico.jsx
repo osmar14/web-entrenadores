@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend
 } from 'recharts';
 
-export default function LienzoAnalitico({ esPro, setMostrarPaywall, cliente, usuarioActual, entrenamientosRecientes = [], rutinasDelCliente = [], abrirParaAnalizar }) {
+export default function LienzoAnalitico({ esPro, setMostrarPaywall, cliente, usuarioActual, entrenamientosRecientes = [], rutinasDelCliente = [], abrirParaAnalizar, planDeEntrenamientoJSX }) {
   const [datosRadarGeneral, setDatosRadarGeneral] = useState([]);
   const [datosRadarDetalle, setDatosRadarDetalle] = useState([]);
   const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
@@ -168,39 +168,12 @@ export default function LienzoAnalitico({ esPro, setMostrarPaywall, cliente, usu
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           
           {/* PANEL IZQUIERDO: PLAN DE ENTRENAMIENTOS */}
-          <div className="flex flex-col space-y-6">
-            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
-              <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><span>⏱️</span> Últimos Entrenamientos</h3>
-              {entrenamientosRecientes.length === 0 ? (
-                <div className="text-center py-4 opacity-50"><p className="text-xs text-zinc-500">No hay entrenamientos recientes.</p></div>
-              ) : (
-                <div className="flex flex-col gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-                  {entrenamientosRecientes.map((ent, idx) => (
-                    <div key={idx} className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl flex justify-between items-center hover:border-zinc-700 transition">
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-white">{ent.rutina_nombre || 'Rutina Eliminada'}</span>
-                        <span className="text-[10px] text-zinc-500">{new Date(ent.fecha).toLocaleDateString()}</span>
-                      </div>
-                      <button onClick={() => { const rut = rutinasDelCliente.find(r => r.id === ent.rutina_id); if (rut && abrirParaAnalizar) abrirParaAnalizar(rut); }} className="text-blue-400 text-[10px] font-bold bg-blue-500/10 px-3 py-1.5 rounded hover:bg-blue-500/20 transition border border-blue-500/20 uppercase">Detalle</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
-              <h3 className="text-sm font-bold text-white mb-3">Historial por Rutina</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-                {rutinasDelCliente.map(rut => (
-                  <button key={rut.id} onClick={() => abrirParaAnalizar && abrirParaAnalizar(rut)} className="bg-zinc-900 border border-zinc-800 hover:border-emerald-500/50 p-3 rounded-xl text-left transition flex flex-col items-start gap-1 group">
-                    <span className="text-xs font-bold text-white group-hover:text-emerald-400 transition">{rut.nombre}</span>
-                  </button>
-                ))}
-                {rutinasDelCliente.length === 0 && (
-                   <p className="text-xs text-zinc-500">No tiene rutinas asignadas.</p>
-                )}
+          <div className="flex flex-col space-y-4 max-h-[420px] overflow-y-auto custom-scrollbar pr-2">
+            {planDeEntrenamientoJSX ? planDeEntrenamientoJSX : (
+              <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
+                 <p className="text-zinc-500 text-xs text-center">Plan de entrenamiento no disponible.</p>
               </div>
-            </div>
+            )}
           </div>
 
           {/* GRÁFICA RADAR A LA DERECHA */}

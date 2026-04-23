@@ -315,7 +315,7 @@ export default function Clientes({
                 <div className="flex bg-zinc-900 border border-zinc-800 p-1 rounded-xl shadow-inner">
                   <button onClick={() => setTabNotas('coach')} className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${tabNotas === 'coach' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}>👨‍🏫 Bitácora Médica</button>
                   <button onClick={() => setTabNotas('cliente')} className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${tabNotas === 'cliente' ? 'bg-zinc-800 text-emerald-400 shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}>🗣️ Feedback Cliente</button>
-                  <button onClick={() => setTabNotas('progreso')} className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${tabNotas === 'progreso' ? 'bg-zinc-800 text-blue-400 shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}>📊 Análisis y Gráficas</button>
+                  <button onClick={() => setTabNotas('progreso')} className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${tabNotas === 'progreso' ? 'bg-zinc-800 text-blue-400 shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}>📸 Fotos y Avances</button>
                 </div>
                 {tabNotas === 'coach' && ( <button onClick={() => setMostrarModalNota(true)} className="bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 border border-blue-500/20 px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">➕ Agregar Nota</button> )}
               </div>
@@ -397,30 +397,29 @@ export default function Clientes({
              entrenamientosRecientes={entrenamientosRecientes}
              rutinasDelCliente={rutinasDelCliente}
              abrirParaAnalizar={abrirParaAnalizar}
+             planDeEntrenamientoJSX={
+               <div className="flex flex-col gap-4">
+                 {rutinasDelCliente.map(rutina => (
+                   <div key={rutina.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex flex-col shadow-lg animate-in zoom-in duration-300 hover:border-emerald-500/50 transition-all">
+                     <div className="flex justify-between items-center mb-3">
+                       <div className="flex items-center gap-3">
+                         <div className="w-10 h-10 bg-emerald-500/10 text-emerald-400 rounded-xl flex items-center justify-center text-xl">{emojisGym[rutina.id % emojisGym.length]}</div>
+                         <h3 className="text-lg font-black text-white line-clamp-1">{rutina.nombre}</h3>
+                       </div>
+                     </div>
+                     <div className="flex flex-col gap-2 mt-2">
+                       <button onClick={() => abrirParaAnotar(rutina)} className="w-full bg-emerald-600 border border-emerald-500 text-white hover:bg-emerald-500 py-2.5 rounded-xl font-bold transition text-xs shadow-lg flex items-center justify-center gap-2"><span>📝</span> Anotar Hoy</button>
+                       <div className="flex gap-2">
+                         <button onClick={() => abrirConstructor(rutina)} className="flex-1 bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white py-2 rounded-xl font-bold transition text-xs" title="Editar Plantilla">✏️ Editar</button>
+                         <button onClick={() => handleEliminarRutina(rutina.id)} className="w-12 bg-zinc-950 border border-zinc-800 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 py-2 rounded-xl font-bold transition flex items-center justify-center" title="Eliminar Plan">✕</button>
+                       </div>
+                     </div>
+                   </div>
+                 ))}
+                 <button onClick={() => setMostrarModalAsignar(true)} className="border-2 border-dashed border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600 rounded-2xl p-4 flex items-center justify-center font-bold transition gap-2"><span className="text-xl">+</span> Asignar plan</button>
+               </div>
+             }
           />
-
-          <div className="mt-8">
-            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><span>📋</span> Plan de Entrenamiento Actual</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {rutinasDelCliente.map(rutina => (
-                <div key={rutina.id} className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-6 flex flex-col shadow-lg animate-in zoom-in duration-300">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-xl flex items-center justify-center text-2xl">{emojisGym[rutina.id % emojisGym.length]}</div>
-                    <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider border border-emerald-500/30">Plan Activo</span>
-                  </div>
-                  <h3 className="text-xl font-black text-white mb-6 line-clamp-1 flex-1">{rutina.nombre}</h3>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex gap-2 mb-2">
-                      <button onClick={() => abrirConstructor(rutina)} className="flex-1 bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white py-2.5 rounded-xl font-bold transition flex items-center justify-center text-sm" title="Editar Plantilla">✏️ Editar Plan</button>
-                      <button onClick={() => handleEliminarRutina(rutina.id)} className="w-12 bg-zinc-950 border border-zinc-800 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 py-2.5 rounded-xl font-bold transition flex items-center justify-center" title="Eliminar Plan">✕</button>
-                    </div>
-                    <button onClick={() => abrirParaAnotar(rutina)} className="w-full bg-emerald-600 border border-emerald-500 text-white hover:bg-emerald-500 py-3 rounded-xl font-bold transition text-sm shadow-lg flex items-center justify-center gap-2"><span>📝</span> Anotar Entrenamiento Hoy</button>
-                  </div>
-                </div>
-              ))}
-              <button onClick={() => setMostrarModalAsignar(true)} className="border-2 border-dashed border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600 rounded-2xl p-6 flex flex-col items-center justify-center font-bold transition min-h-[200px]"><span className="text-3xl mb-2">+</span> Asignar otro plan</button>
-            </div>
-          </div>
         </div>
       )}
 
