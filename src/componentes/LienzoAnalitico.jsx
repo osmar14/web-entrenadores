@@ -4,10 +4,11 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend
 } from 'recharts';
 
-export default function LienzoAnalitico({ esPro, setMostrarPaywall, cliente, usuarioActual }) {
+export default function LienzoAnalitico({ esPro, setMostrarPaywall, cliente, usuarioActual, entrenamientosRecientes = [], rutinasDelCliente = [], abrirParaAnalizar }) {
   const [datosRadarGeneral, setDatosRadarGeneral] = useState([]);
   const [datosRadarDetalle, setDatosRadarDetalle] = useState([]);
   const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
+  const [modalDetalleAbierto, setModalDetalleAbierto] = useState(false);
   
   // Estados para Comparador (PRO)
   const [datosComparativa, setDatosComparativa] = useState([]);
@@ -40,12 +41,26 @@ export default function LienzoAnalitico({ esPro, setMostrarPaywall, cliente, usu
       });
       if (res.ok) {
         const data = await res.json();
-        // Formatear para recharts
-        setDatosRadarGeneral(data.map(d => ({
-          subject: d.grupo_muscular || 'General',
-          A: d.total_series,
-          fullMark: Math.max(...data.map(x => x.total_series)) + 5
-        })));
+        
+        // Formatear para recharts con rombo fijo (Pierna, Pecho, Espalda, Bíceps, Hombro, Tríceps)
+        const baseMuscles = ["Pierna", "Pecho", "Bíceps", "Espalda", "Tríceps", "Hombro"];
+        const formattedData = baseMuscles.map(muscle => {
+           const matchSearch = muscle.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+           const found = data.find(d => {
+              if(!d.grupo_muscular) return false;
+              const gSearch = d.grupo_muscular.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+              return gSearch === matchSearch || gSearch.includes(matchSearch) || matchSearch.includes(gSearch);
+           });
+           return {
+             subject: muscle,
+             A: found ? found.total_series : 0
+           };
+        });
+        
+        const maxSeries = Math.max(...formattedData.map(d => d.A));
+        formattedData.forEach(d => d.fullMark = Math.max(maxSeries + 5, 10));
+        
+        setDatosRadarGeneral(formattedData);
       }
     } catch (e) { console.error("Error radar", e); }
   };
@@ -56,6 +71,8 @@ export default function LienzoAnalitico({ esPro, setMostrarPaywall, cliente, usu
       return;
     }
     setGrupoSeleccionado(grupo);
+    setDatosRadarDetalle([]);
+    setModalDetalleAbierto(true);
     try {
       const token = await usuarioActual.getIdToken();
       const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/metricas/radar-detalle/${cliente.id}/${grupo}`, {
@@ -138,92 +155,118 @@ export default function LienzoAnalitico({ esPro, setMostrarPaywall, cliente, usu
   return (
     <div className="mt-6 space-y-6">
       
-      {/* SECCIÓN 1: RADAR GLOBAL (VISIBLE PARA TODOS) */}
+      {/* SECCIÓN 1: RADAR GLOBAL Y PLAN DE ENTRENAMIENTO */}
       <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-4 md:p-6">
         <div className="flex items-center gap-3 mb-6">
           <span className="text-2xl">🕸️</span>
           <div>
-            <h2 className="text-xl font-black text-white">Distribución de Esfuerzo (30 Días)</h2>
-            <p className="text-sm text-zinc-400">Analiza el volumen total por grupo muscular.</p>
+            <h2 className="text-xl font-black text-white">Análisis de Progreso</h2>
+            <p className="text-sm text-zinc-400">Distribución de esfuerzo y registro de sesiones.</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           
-          {/* GRÁFICA RADAR */}
-          <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-2 h-80 flex items-center justify-center relative">
-            {datosRadarGeneral.length === 0 ? (
-              <p className="text-zinc-600 text-sm">No hay datos suficientes en los últimos 30 días.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={datosRadarGeneral}>
-                  <PolarGrid gridType="polygon" stroke="#3f3f46" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#d4d4d8', fontSize: 11, fontWeight: 'bold' }} />
-                  <PolarRadiusAxis angle={90} domain={[0, 'auto']} tick={false} axisLine={false} />
-                  <Tooltip content={<CustomTooltipRadar />} />
-                  <Radar
-                    name="Volumen"
-                    dataKey="A"
-                    stroke="#3b82f6"
-                    fill="#60a5fa"
-                    fillOpacity={0.4}
-                    dot={{ r: 4, fill: '#2563eb', strokeWidth: 2, stroke: '#fff' }}
-                    activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2, cursor: 'pointer', onClick: (e, payload) => cargarRadarDetalle(payload.payload.subject) }}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
-            )}
-            {/* Overlay interactivo para usuarios Básico (indica que el clic es Pro) */}
-            <div className="absolute top-2 right-2 flex items-center gap-2">
-               <span className="text-xs text-zinc-500 font-bold bg-zinc-900 px-2 py-1 rounded-md border border-zinc-800">Clic en un vértice para detalle</span>
+          {/* PANEL IZQUIERDO: PLAN DE ENTRENAMIENTOS */}
+          <div className="flex flex-col space-y-6">
+            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
+              <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><span>⏱️</span> Últimos Entrenamientos</h3>
+              {entrenamientosRecientes.length === 0 ? (
+                <div className="text-center py-4 opacity-50"><p className="text-xs text-zinc-500">No hay entrenamientos recientes.</p></div>
+              ) : (
+                <div className="flex flex-col gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                  {entrenamientosRecientes.map((ent, idx) => (
+                    <div key={idx} className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl flex justify-between items-center hover:border-zinc-700 transition">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-white">{ent.rutina_nombre || 'Rutina Eliminada'}</span>
+                        <span className="text-[10px] text-zinc-500">{new Date(ent.fecha).toLocaleDateString()}</span>
+                      </div>
+                      <button onClick={() => { const rut = rutinasDelCliente.find(r => r.id === ent.rutina_id); if (rut && abrirParaAnalizar) abrirParaAnalizar(rut); }} className="text-blue-400 text-[10px] font-bold bg-blue-500/10 px-3 py-1.5 rounded hover:bg-blue-500/20 transition border border-blue-500/20 uppercase">Detalle</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
+              <h3 className="text-sm font-bold text-white mb-3">Historial por Rutina</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                {rutinasDelCliente.map(rut => (
+                  <button key={rut.id} onClick={() => abrirParaAnalizar && abrirParaAnalizar(rut)} className="bg-zinc-900 border border-zinc-800 hover:border-emerald-500/50 p-3 rounded-xl text-left transition flex flex-col items-start gap-1 group">
+                    <span className="text-xs font-bold text-white group-hover:text-emerald-400 transition">{rut.nombre}</span>
+                  </button>
+                ))}
+                {rutinasDelCliente.length === 0 && (
+                   <p className="text-xs text-zinc-500">No tiene rutinas asignadas.</p>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* DRILL-DOWN DETALLE (BARRAS HORIZONTALES) */}
-          <div className={`bg-zinc-950 border border-zinc-800 rounded-xl p-4 h-80 flex flex-col relative overflow-hidden transition-all duration-300 ${!grupoSeleccionado ? 'opacity-50' : ''}`}>
-             {!esPro && (
-               <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-sm cursor-pointer" onClick={() => setMostrarPaywall(true)}>
-                 <span className="text-3xl mb-2 drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]">👑</span>
-                 <p className="text-sm font-bold text-white mb-1">Análisis Detallado Pro</p>
-                 <p className="text-xs text-zinc-400 text-center px-4">Desglosa el volumen por ejercicio específico dentro de cada músculo.</p>
-               </div>
-             )}
-             
-             {grupoSeleccionado ? (
-               <>
-                 <h3 className="text-emerald-400 font-bold text-sm uppercase tracking-wider mb-4 border-b border-zinc-800 pb-2">
-                   Desglose: <span className="text-white">{grupoSeleccionado}</span>
-                 </h3>
-                 <div className="flex-1">
-                   {datosRadarDetalle.length === 0 ? (
-                     <div className="h-full flex items-center justify-center"><p className="text-zinc-600 text-xs">Cargando desglose...</p></div>
-                   ) : (
-                     <ResponsiveContainer width="100%" height="100%">
-                       <BarChart data={datosRadarDetalle} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
-                         <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={true} vertical={false} />
-                         <XAxis type="number" stroke="#52525b" fontSize={10} hide />
-                         <YAxis dataKey="name" type="category" stroke="#a1a1aa" fontSize={11} width={100} tickLine={false} axisLine={false} />
-                         <Tooltip content={<CustomTooltipDetalle />} cursor={{ fill: '#27272a', opacity: 0.4 }} />
-                         <Bar dataKey="series" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20}>
-                           {datosRadarDetalle.map((entry, index) => (
-                             <Cell key={`cell-${index}`} fill={['#10b981', '#34d399', '#059669', '#6ee7b7'][index % 4]} />
-                           ))}
-                         </Bar>
-                       </BarChart>
-                     </ResponsiveContainer>
-                   )}
-                 </div>
-               </>
-             ) : (
-               <div className="h-full flex flex-col items-center justify-center text-center px-4 opacity-50">
-                 <span className="text-3xl mb-2">🔍</span>
-                 <p className="text-sm font-bold text-zinc-400">Selecciona un músculo</p>
-                 <p className="text-xs text-zinc-500">Haz clic en un vértice del radar para ver la distribución de ejercicios.</p>
-               </div>
-             )}
+          {/* GRÁFICA RADAR A LA DERECHA */}
+          <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-2 h-[420px] flex flex-col relative overflow-hidden group">
+            <h3 className="text-center text-xs font-bold text-zinc-400 uppercase tracking-wider mt-4">Distribución Muscular</h3>
+            {datosRadarGeneral.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center"><p className="text-zinc-600 text-sm">Sin datos suficientes.</p></div>
+            ) : (
+              <div className="flex-1 -mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="65%" data={datosRadarGeneral}>
+                    <PolarGrid gridType="polygon" stroke="#27272a" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#a1a1aa', fontSize: 11, fontWeight: 'bold' }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} axisLine={false} />
+                    <Tooltip content={<CustomTooltipRadar />} />
+                    <Radar
+                      name="Series"
+                      dataKey="A"
+                      stroke="#10b981"
+                      fill="#34d399"
+                      fillOpacity={0.3}
+                      dot={{ r: 4, fill: '#059669', strokeWidth: 2, stroke: '#fff' }}
+                      activeDot={{ r: 7, fill: '#10b981', stroke: '#fff', strokeWidth: 2, cursor: 'pointer', onClick: (e, payload) => cargarRadarDetalle(payload.payload.subject) }}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity">
+               <span className="text-[10px] text-zinc-400 font-bold bg-zinc-900/80 px-3 py-1 rounded-full border border-zinc-800">Clica un vértice para detalles</span>
+            </div>
           </div>
+
         </div>
       </div>
+
+      {/* MODAL PARA DRILL-DOWN DETALLE */}
+      {modalDetalleAbierto && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={() => setModalDetalleAbierto(false)}>
+           <div className="bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="bg-zinc-900 border-b border-zinc-800 p-4 flex justify-between items-center">
+                 <h3 className="text-emerald-400 font-black uppercase tracking-wider flex items-center gap-2"><span>🔍</span> Desglose: <span className="text-white">{grupoSeleccionado}</span></h3>
+                 <button onClick={() => setModalDetalleAbierto(false)} className="text-zinc-500 hover:text-white transition text-xl font-bold">&times;</button>
+              </div>
+              <div className="p-6 h-80">
+                 {datosRadarDetalle.length === 0 ? (
+                   <div className="h-full flex items-center justify-center"><p className="text-zinc-600 font-bold animate-pulse">Cargando desglose...</p></div>
+                 ) : (
+                   <ResponsiveContainer width="100%" height="100%">
+                     <BarChart data={datosRadarDetalle} layout="vertical" margin={{ top: 0, right: 30, left: 0, bottom: 0 }}>
+                       <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={true} vertical={false} />
+                       <XAxis type="number" stroke="#52525b" fontSize={10} hide />
+                       <YAxis dataKey="name" type="category" stroke="#a1a1aa" fontSize={11} width={120} tickLine={false} axisLine={false} />
+                       <Tooltip content={<CustomTooltipDetalle />} cursor={{ fill: '#27272a', opacity: 0.4 }} />
+                       <Bar dataKey="series" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20} animationDuration={1000}>
+                         {datosRadarDetalle.map((entry, index) => (
+                           <Cell key={`cell-${index}`} fill={['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6'][index % 4]} />
+                         ))}
+                       </Bar>
+                     </BarChart>
+                   </ResponsiveContainer>
+                 )}
+              </div>
+           </div>
+        </div>
+      )}
 
       {/* SECCIÓN 2: COMPARADOR PRO (PAYWALL) */}
       <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-4 md:p-6 relative overflow-hidden">

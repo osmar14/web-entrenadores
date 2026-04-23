@@ -342,25 +342,6 @@ export default function Clientes({
                 ) : tabNotas === 'progreso' ? (
                   <div className="flex flex-col h-full space-y-6">
                     <div>
-                      <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><span>⏱️</span> Últimos Entrenamientos</h3>
-                      {entrenamientosRecientes.length === 0 ? (
-                        <div className="text-center p-6 bg-zinc-900/50 rounded-xl border border-zinc-800 border-dashed"><p className="text-xs text-zinc-500">No hay entrenamientos recientes.</p></div>
-                      ) : (
-                        <div className="flex flex-col gap-2">
-                          {entrenamientosRecientes.map((ent, idx) => (
-                            <div key={idx} className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl flex justify-between items-center hover:border-zinc-700 transition">
-                              <div className="flex flex-col">
-                                <span className="text-xs font-bold text-white">{ent.rutina_nombre || 'Rutina Eliminada'}</span>
-                                <span className="text-[10px] text-zinc-500">{new Date(ent.fecha).toLocaleDateString()}</span>
-                              </div>
-                              <button onClick={() => { const rut = rutinasDelCliente.find(r => r.id === ent.rutina_id); if (rut) abrirParaAnalizar(rut); else mostrarAlerta('Rutina no encontrada', 'error'); }} className="text-blue-400 text-xs font-bold bg-blue-500/10 px-3 py-1.5 rounded hover:bg-blue-500/20 transition border border-blue-500/20">Ver Detalle</button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
                       <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><span>📸</span> Fotos de Progreso</h3>
                       {fotosCliente.length === 0 ? (
                          <div className="text-center p-6 bg-zinc-900/50 rounded-xl border border-zinc-800 border-dashed"><p className="text-xs text-zinc-500">El cliente no ha subido fotos.</p></div>
@@ -378,17 +359,7 @@ export default function Clientes({
                       )}
                     </div>
 
-                    <div className="flex-1">
-                      <h3 className="text-sm font-bold text-white mb-3">Historial por Rutina</h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {rutinasDelCliente.map(rut => (
-                          <button key={rut.id} onClick={() => abrirParaAnalizar(rut)} className="bg-zinc-900 border border-zinc-800 hover:border-blue-500/50 p-4 rounded-xl text-left transition flex flex-col items-start gap-1 group">
-                            <span className="text-sm font-bold text-white group-hover:text-blue-400 transition">{rut.nombre}</span>
-                            <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Abrir Análisis &rarr;</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                    <div className="flex-1"></div>
                     {esPro && (
                       <div className="mt-auto pt-4 border-t border-zinc-800">
                         <button onClick={handleGenerarPDF} className="w-full bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-500/30 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm shadow-sm">
@@ -423,6 +394,9 @@ export default function Clientes({
              cliente={clienteSeleccionado} 
              volumenSemanal={volumenSemanal} 
              usuarioActual={usuarioActual} 
+             entrenamientosRecientes={entrenamientosRecientes}
+             rutinasDelCliente={rutinasDelCliente}
+             abrirParaAnalizar={abrirParaAnalizar}
           />
 
           <div className="mt-8">
