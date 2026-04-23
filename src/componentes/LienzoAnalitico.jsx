@@ -1,36 +1,132 @@
-import React from 'react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import React, { useState, useEffect } from 'react';
+import { 
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend
+} from 'recharts';
 
-export default function LienzoAnalitico({ esPro, setMostrarPaywall }) {
-  // 🧪 DATOS SIMULADOS (Mock Data) PARA EL DISEÑO
-  const datosFuerza = [
-    { semana: 'Sem 1', peso: 80 },
-    { semana: 'Sem 2', peso: 82.5 },
-    { semana: 'Sem 3', peso: 82.5 },
-    { semana: 'Sem 4', peso: 85 },
-    { semana: 'Sem 5', peso: 87.5 },
-    { semana: 'Sem 6', peso: 90 },
-  ];
+export default function LienzoAnalitico({ esPro, setMostrarPaywall, cliente, usuarioActual }) {
+  const [datosRadarGeneral, setDatosRadarGeneral] = useState([]);
+  const [datosRadarDetalle, setDatosRadarDetalle] = useState([]);
+  const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
+  
+  // Estados para Comparador (PRO)
+  const [datosComparativa, setDatosComparativa] = useState([]);
+  const [mes1, setMes1] = useState('');
+  const [mes2, setMes2] = useState('');
+  const [cargandoComparativa, setCargandoComparativa] = useState(false);
 
-  const datosVolumen = [
-    { musculo: 'Pecho', series: 14 },
-    { musculo: 'Espalda', series: 16 },
-    { musculo: 'Pierna', series: 20 },
-    { musculo: 'Hombro', series: 10 },
-    { musculo: 'Brazo', series: 12 },
-  ];
+  useEffect(() => {
+    // Inicializar meses para el comparador al mes actual y al anterior
+    const hoy = new Date();
+    const m1 = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+    hoy.setMonth(hoy.getMonth() - 1);
+    const m2 = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+    setMes1(m2); // Mes anterior
+    setMes2(m1); // Mes actual
+  }, []);
 
-  // Colores para el gráfico de barras
-  const coloresBarras = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+  useEffect(() => {
+    if (cliente && usuarioActual) {
+      cargarRadarGeneral();
+    }
+  }, [cliente, usuarioActual]);
 
-  // Custom Tooltip para el Dark Mode
-  const CustomTooltip = ({ active, payload, label }) => {
+  const cargarRadarGeneral = async () => {
+    try {
+      const token = await usuarioActual.getIdToken();
+      const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/metricas/radar/${cliente.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Formatear para recharts
+        setDatosRadarGeneral(data.map(d => ({
+          subject: d.grupo_muscular || 'General',
+          A: d.total_series,
+          fullMark: Math.max(...data.map(x => x.total_series)) + 5
+        })));
+      }
+    } catch (e) { console.error("Error radar", e); }
+  };
+
+  const cargarRadarDetalle = async (grupo) => {
+    if (!esPro) {
+      setMostrarPaywall(true);
+      return;
+    }
+    setGrupoSeleccionado(grupo);
+    try {
+      const token = await usuarioActual.getIdToken();
+      const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/metricas/radar-detalle/${cliente.id}/${grupo}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDatosRadarDetalle(data.map(d => ({
+          name: d.ejercicio.length > 15 ? d.ejercicio.substring(0, 15) + '...' : d.ejercicio,
+          series: d.total_series
+        })));
+      }
+    } catch (e) { console.error("Error detalle", e); }
+  };
+
+  const cargarComparativa = async () => {
+    if (!esPro || !mes1 || !mes2) return;
+    setCargandoComparativa(true);
+    try {
+      const token = await usuarioActual.getIdToken();
+      const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/metricas/comparativa/${cliente.id}?mes1=${mes1}&mes2=${mes2}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setDatosComparativa(await res.json());
+      }
+    } catch (e) { console.error("Error comparativa", e); }
+    setCargandoComparativa(false);
+  };
+
+  const CustomTooltipRadar = ({ active, payload }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-zinc-900 border border-zinc-700 p-3 rounded-xl shadow-xl">
-          <p className="text-zinc-400 text-xs font-bold uppercase mb-1">{label}</p>
-          <p className="text-white font-black text-lg">
-            {payload[0].value} <span className="text-sm font-normal text-zinc-500">{payload[0].name === 'peso' ? 'kg (1RM)' : 'Series'}</span>
+        <div className="bg-zinc-900 border border-zinc-700 p-3 rounded-xl shadow-xl z-50">
+          <p className="text-zinc-400 text-xs font-bold uppercase mb-1">{payload[0].payload.subject}</p>
+          <p className="text-emerald-400 font-black text-lg">
+            {payload[0].value} <span className="text-sm font-normal text-zinc-500">Series (30 días)</span>
+          </p>
+          {esPro ? (
+            <p className="text-[10px] text-zinc-500 mt-2">Haz clic para desglosar ejercicios</p>
+          ) : (
+            <p className="text-[10px] text-amber-500 mt-2 flex items-center gap-1"><span>👑</span> Pro: Clic para desglosar</p>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const CustomTooltipBar = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-zinc-900 border border-zinc-700 p-3 rounded-xl shadow-xl z-50">
+          <p className="text-zinc-400 text-xs font-bold uppercase mb-2">{label}</p>
+          {payload.map((p, idx) => (
+             <p key={idx} className="font-black text-sm" style={{ color: p.color }}>
+               {p.name}: {p.value} <span className="font-normal text-zinc-500">series</span>
+             </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const CustomTooltipDetalle = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-zinc-900 border border-zinc-700 p-3 rounded-xl shadow-xl z-50">
+          <p className="text-emerald-400 text-xs font-bold mb-1">{label}</p>
+          <p className="text-white font-black text-sm">
+            {payload[0].value} <span className="text-xs font-normal text-zinc-500">series</span>
           </p>
         </div>
       );
@@ -39,82 +135,156 @@ export default function LienzoAnalitico({ esPro, setMostrarPaywall }) {
   };
 
   return (
-    <div className="relative mt-6 border border-zinc-800 bg-zinc-900/40 rounded-2xl p-4 md:p-6 overflow-hidden">
+    <div className="mt-6 space-y-6">
       
-      {/* 👑 EL MURO DE CRISTAL (PAYWALL) */}
-      {!esPro && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-zinc-950/70 backdrop-blur-sm">
-          <div className="bg-zinc-900 border border-amber-500/30 p-6 md:p-8 rounded-2xl shadow-2xl text-center max-w-sm w-[90%] mx-auto transform hover:scale-105 transition-transform cursor-pointer" onClick={() => setMostrarPaywall(true)}>
-            <span className="text-4xl mb-3 block drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]">👑</span>
-            <h3 className="text-xl font-black text-white mb-2">Desbloquea las Analíticas</h3>
-            <p className="text-zinc-400 text-sm mb-6">Monitorea la curva de fatiga y la evolución de fuerza bruta (1RM) de tus clientes.</p>
-            <button className="w-full bg-gradient-to-r from-amber-500 to-yellow-400 text-zinc-950 py-2.5 rounded-xl font-black shadow-lg">
-              Ver Planes Pro
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* CONTENIDO DEL LIENZO (Se difumina si no es Pro) */}
-      <div className={`transition-all duration-500 ${!esPro ? 'opacity-30 blur-[4px] pointer-events-none select-none' : ''}`}>
+      {/* SECCIÓN 1: RADAR GLOBAL (VISIBLE PARA TODOS) */}
+      <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-4 md:p-6">
         <div className="flex items-center gap-3 mb-6">
-          <span className="text-2xl">📈</span>
-          <h2 className="text-xl font-black text-white">Biometría y Rendimiento</h2>
+          <span className="text-2xl">🕸️</span>
+          <div>
+            <h2 className="text-xl font-black text-white">Distribución de Esfuerzo (30 Días)</h2>
+            <p className="text-sm text-zinc-400">Analiza el volumen total por grupo muscular.</p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
           
-          {/* GRÁFICA 1: CURVA DE FUERZA (LINEAL) */}
-          <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 md:p-5">
-            <div className="mb-4">
-              <h3 className="text-emerald-400 font-bold text-sm uppercase tracking-wider">Curva de Fuerza</h3>
-              <p className="text-zinc-500 text-xs">Evolución de 1RM Estimado (Ej. Sentadilla)</p>
-            </div>
-            <div className="h-64 w-full">
+          {/* GRÁFICA RADAR */}
+          <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-2 h-80 flex items-center justify-center relative">
+            {datosRadarGeneral.length === 0 ? (
+              <p className="text-zinc-600 text-sm">No hay datos suficientes en los últimos 30 días.</p>
+            ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={datosFuerza} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                  <XAxis dataKey="semana" stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} domain={['dataMin - 5', 'dataMax + 5']} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#3f3f46', strokeWidth: 1, strokeDasharray: '5 5' }} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="peso" 
-                    stroke="#10b981" 
-                    strokeWidth={4} 
-                    dot={{ r: 4, fill: '#10b981', stroke: '#18181b', strokeWidth: 2 }} 
-                    activeDot={{ r: 6, fill: '#34d399', stroke: '#10b981', strokeWidth: 2, className: "animate-pulse" }}
+                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={datosRadarGeneral}>
+                  <PolarGrid stroke="#27272a" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#a1a1aa', fontSize: 12, fontWeight: 'bold' }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={{ fill: '#52525b' }} />
+                  <Tooltip content={<CustomTooltipRadar />} />
+                  <Radar
+                    name="Volumen"
+                    dataKey="A"
+                    stroke="#10b981"
+                    fill="#10b981"
+                    fillOpacity={0.3}
+                    activeDot={{ r: 6, fill: '#34d399', stroke: '#fff', strokeWidth: 2, onClick: (e, payload) => cargarRadarDetalle(payload.payload.subject) }}
                   />
-                </LineChart>
+                </RadarChart>
               </ResponsiveContainer>
+            )}
+            {/* Overlay interactivo para usuarios Básico (indica que el clic es Pro) */}
+            <div className="absolute top-2 right-2 flex items-center gap-2">
+               <span className="text-xs text-zinc-500 font-bold bg-zinc-900 px-2 py-1 rounded-md border border-zinc-800">Clic en un vértice para detalle</span>
             </div>
           </div>
 
-          {/* GRÁFICA 2: VOLUMEN SEMANAL (BARRAS) */}
-          <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 md:p-5">
-            <div className="mb-4">
-              <h3 className="text-blue-400 font-bold text-sm uppercase tracking-wider">Distribución de Carga</h3>
-              <p className="text-zinc-500 text-xs">Series efectivas por grupo muscular (7 días)</p>
-            </div>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={datosVolumen} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                  <XAxis dataKey="musculo" stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: '#27272a', opacity: 0.4 }} />
-                  <Bar dataKey="series" radius={[4, 4, 0, 0]}>
-                    {datosVolumen.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={coloresBarras[index % coloresBarras.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+          {/* DRILL-DOWN DETALLE (BARRAS HORIZONTALES) */}
+          <div className={`bg-zinc-950 border border-zinc-800 rounded-xl p-4 h-80 flex flex-col relative overflow-hidden transition-all duration-300 ${!grupoSeleccionado ? 'opacity-50' : ''}`}>
+             {!esPro && (
+               <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-sm cursor-pointer" onClick={() => setMostrarPaywall(true)}>
+                 <span className="text-3xl mb-2 drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]">👑</span>
+                 <p className="text-sm font-bold text-white mb-1">Análisis Detallado Pro</p>
+                 <p className="text-xs text-zinc-400 text-center px-4">Desglosa el volumen por ejercicio específico dentro de cada músculo.</p>
+               </div>
+             )}
+             
+             {grupoSeleccionado ? (
+               <>
+                 <h3 className="text-emerald-400 font-bold text-sm uppercase tracking-wider mb-4 border-b border-zinc-800 pb-2">
+                   Desglose: <span className="text-white">{grupoSeleccionado}</span>
+                 </h3>
+                 <div className="flex-1">
+                   {datosRadarDetalle.length === 0 ? (
+                     <div className="h-full flex items-center justify-center"><p className="text-zinc-600 text-xs">Cargando desglose...</p></div>
+                   ) : (
+                     <ResponsiveContainer width="100%" height="100%">
+                       <BarChart data={datosRadarDetalle} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
+                         <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={true} vertical={false} />
+                         <XAxis type="number" stroke="#52525b" fontSize={10} hide />
+                         <YAxis dataKey="name" type="category" stroke="#a1a1aa" fontSize={11} width={100} tickLine={false} axisLine={false} />
+                         <Tooltip content={<CustomTooltipDetalle />} cursor={{ fill: '#27272a', opacity: 0.4 }} />
+                         <Bar dataKey="series" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20}>
+                           {datosRadarDetalle.map((entry, index) => (
+                             <Cell key={`cell-${index}`} fill={['#10b981', '#34d399', '#059669', '#6ee7b7'][index % 4]} />
+                           ))}
+                         </Bar>
+                       </BarChart>
+                     </ResponsiveContainer>
+                   )}
+                 </div>
+               </>
+             ) : (
+               <div className="h-full flex flex-col items-center justify-center text-center px-4 opacity-50">
+                 <span className="text-3xl mb-2">🔍</span>
+                 <p className="text-sm font-bold text-zinc-400">Selecciona un músculo</p>
+                 <p className="text-xs text-zinc-500">Haz clic en un vértice del radar para ver la distribución de ejercicios.</p>
+               </div>
+             )}
           </div>
-
         </div>
       </div>
+
+      {/* SECCIÓN 2: COMPARADOR PRO (PAYWALL) */}
+      <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-4 md:p-6 relative overflow-hidden">
+        {!esPro && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-sm">
+            <div className="bg-zinc-900 border border-amber-500/30 p-6 rounded-2xl shadow-2xl text-center max-w-sm cursor-pointer transform hover:scale-105 transition" onClick={() => setMostrarPaywall(true)}>
+              <span className="text-4xl mb-3 block drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]">👑</span>
+              <h3 className="text-lg font-black text-white mb-2">Comparador de Evolución</h3>
+              <p className="text-zinc-400 text-xs mb-4">Compara el rendimiento de diferentes meses para validar tu metodología con datos duros.</p>
+              <button className="bg-gradient-to-r from-amber-500 to-yellow-400 text-zinc-950 px-6 py-2 rounded-xl font-black text-sm">Desbloquear Pro</button>
+            </div>
+          </div>
+        )}
+
+        <div className={`transition-all duration-500 ${!esPro ? 'opacity-20 pointer-events-none select-none blur-sm' : ''}`}>
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⚖️</span>
+              <div>
+                <h2 className="text-xl font-black text-white">Generador de Comparativas</h2>
+                <p className="text-sm text-zinc-400">Compara el volumen mensual por zona muscular.</p>
+              </div>
+            </div>
+
+            {/* Controles de Comparación */}
+            <div className="flex flex-wrap gap-3 bg-zinc-950 p-2 rounded-xl border border-zinc-800">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-zinc-500 font-bold uppercase">Mes A:</span>
+                <input type="month" value={mes1} onChange={(e) => setMes1(e.target.value)} className="bg-zinc-900 text-white text-sm px-2 py-1 rounded outline-none border border-zinc-700" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-zinc-500 font-bold uppercase">Mes B:</span>
+                <input type="month" value={mes2} onChange={(e) => setMes2(e.target.value)} className="bg-zinc-900 text-white text-sm px-2 py-1 rounded outline-none border border-zinc-700" />
+              </div>
+              <button onClick={cargarComparativa} disabled={cargandoComparativa} className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm px-4 py-1.5 rounded-lg shadow-lg transition">
+                {cargandoComparativa ? '...' : 'Comparar'}
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 h-72">
+            {datosComparativa.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center opacity-50">
+                <span className="text-3xl mb-2">📊</span>
+                <p className="text-sm font-bold text-zinc-400">Selecciona dos meses y presiona Comparar</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={datosComparativa} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                  <XAxis dataKey="grupo_muscular" stroke="#a1a1aa" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip content={<CustomTooltipBar />} cursor={{ fill: '#27272a', opacity: 0.4 }} />
+                  <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', color: '#a1a1aa' }} />
+                  <Bar name={`Mes ${mes1}`} dataKey="series_mes1" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar name={`Mes ${mes2}`} dataKey="series_mes2" fill="#10b981" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      </div>
+      
     </div>
   );
 }

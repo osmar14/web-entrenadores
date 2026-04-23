@@ -3,6 +3,7 @@ import Login from './vistas/Login';
 import Inicio from './vistas/Inicio';
 import Clientes from './vistas/Clientes';
 import Constructor from './vistas/Constructor';
+import Planes from './vistas/Planes';
 import Sidebar from './componentes/Sidebar';
 import PaywallModal from './componentes/PaywallModal';
 import { auth } from './firebase';
@@ -10,8 +11,8 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 function App() {
   // 👑 ESTADOS DEL PLAN PRO Y MURO DE CRISTAL
-  const [planEntrenador, setPlanEntrenador] = useState('BASICO'); // Cambia a 'PRO' para ver cómo se desbloquea
-  const esPro = planEntrenador === 'PRO' || planEntrenador === 'TRIAL';
+  const [planEntrenador, setPlanEntrenador] = useState('TRIAL'); 
+  const esPro = planEntrenador === 'PRO';
   const [mostrarPaywall, setMostrarPaywall] = useState(false);
 
   // ESTADOS ORIGINALES
@@ -28,9 +29,17 @@ function App() {
   const [filtroMusculo, setFiltroMusculo] = useState('Todos');
   const [ejerciciosEnRutina, setEjerciciosEnRutina] = useState([]);
   const [vistaActiva, setVistaActiva] = useState('inicio');
-  const [diasPlan, setDiasPlan] = useState(['Día 1']);
-  const [diaActivo, setDiaActivo] = useState('Día 1');
-  const [mostrarModal, setMostrarModal] = useState(false);
+  const [diasPlan, setDiasPlan] = useState([]);
+  const [diaActivo, setDiaActivo] = useState('');
+  
+  // Phase 2 states
+  const [mostrarModalClonarMasivo, setMostrarModalClonarMasivo] = useState(false);
+  const [rutinaAClonar, setRutinaAClonar] = useState(null);
+  const [clientesSeleccionados, setClientesSeleccionados] = useState([]);
+  const [mostrarModalCatalogo, setMostrarModalCatalogo] = useState(false);
+  const [nuevoEjercicioCatalogo, setNuevoEjercicioCatalogo] = useState({nombre: '', grupo_muscular: 'Pecho', tipo_metrica: 'reps'});
+
+  const obtenerNombreUsuario = () => usuarioActual?.displayName || usuarioActual?.email?.split('@')[0] || "Coach";
   const [pasoModal, setPasoModal] = useState('formulario');
   const [nuevaRutina, setNuevaRutina] = useState({ id: null, nombre: '', descripcion: '', nivel: 'Principiante' });
   const [notificacion, setNotificacion] = useState(null);
@@ -72,6 +81,15 @@ function App() {
         setListaClientes(datosClientes);
       }
 
+      // Obtener plan actual
+      try {
+        const resPerfil = await fetch('https://backend-entrenadores-production.up.railway.app/api/entrenadores/perfil', { headers: headersSeguros });
+        const datosPerfil = await resPerfil.json();
+        if (datosPerfil.plan_actual) {
+          setPlanEntrenador(datosPerfil.plan_actual);
+        }
+      } catch (err) { console.error("Error obteniendo perfil"); }
+
       const resRutinas = await fetch('https://backend-entrenadores-production.up.railway.app/api/rutinas', { headers: headersSeguros });
       const datosRutinas = await resRutinas.json();
       if (Array.isArray(datosRutinas)) {
@@ -81,7 +99,7 @@ function App() {
         setListaRutinas(plantillas);
       }
 
-      const resEjercicios = await fetch('https://backend-entrenadores-production.up.railway.app/api/ejercicios');
+      const resEjercicios = await fetch('https://backend-entrenadores-production.up.railway.app/api/ejercicios', { headers: headersSeguros });
       const datosEjercicios = await resEjercicios.json();
       if (Array.isArray(datosEjercicios)) setCatalogoEjercicios(datosEjercicios);
     } catch (e) { console.error("Error de conexión:", e); }
@@ -103,6 +121,58 @@ function App() {
       else { mostrarAlerta("Error al clonar", "error"); }
     } catch (e) { mostrarAlerta("Hubo un error de conexión", "error"); }
   }
+
+  const handleClonarMasivo = async () => {
+    if (clientesSeleccionados.length === 0) return mostrarAlerta("Selecciona al menos un cliente", "error");
+    try {
+      const token = await usuarioActual.getIdToken();
+      const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/rutinas/clonar-masivo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ plantilla_id: rutinaAClonar.id, cliente_ids: clientesSeleccionados })
+      });
+      if (res.ok) { 
+        mostrarAlerta(`Plan asignado a ${clientesSeleccionados.length} clientes 🚀`, "exito"); 
+        setMostrarModalClonarMasivo(false);
+        setClientesSeleccionados([]);
+        setRutinaAClonar(null);
+        cargarDatos(); 
+      } else {
+        const d = await res.json();
+        mostrarAlerta(d.error || "Error al clonar", "error");
+      }
+    } catch (e) { mostrarAlerta("Error de conexión", "error"); }
+  }
+
+  const handleCrearEjercicio = async () => {
+    if(!nuevoEjercicioCatalogo.nombre) return mostrarAlerta("El nombre es requerido", "error");
+    try {
+      const token = await usuarioActual.getIdToken();
+      const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/ejercicios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(nuevoEjercicioCatalogo)
+      });
+      if (res.ok) { 
+        mostrarAlerta("Ejercicio añadido al catálogo", "exito"); 
+        setNuevoEjercicioCatalogo({nombre: '', grupo_muscular: 'Pecho', tipo_metrica: 'reps'});
+        cargarDatos(); 
+      }
+    } catch (e) { mostrarAlerta("Error", "error"); }
+  };
+
+  const handleEliminarEjercicio = async (id) => {
+    if(!window.confirm("¿Seguro que deseas eliminar este ejercicio?")) return;
+    try {
+      const token = await usuarioActual.getIdToken();
+      const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/ejercicios/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) { mostrarAlerta("Ejercicio eliminado", "exito"); cargarDatos(); }
+      else { mostrarAlerta("No puedes eliminar un ejercicio global", "error"); }
+    } catch (e) { mostrarAlerta("Error", "error"); }
+  };
 
   const handleEliminarRutina = (rutina_id) => {
     setConfirmacion({
@@ -271,7 +341,9 @@ function App() {
 
         {vistaActiva === 'inicio' && <Inicio totalClientes={totalClientes} totalRutinas={totalRutinas} usuarioActual={usuarioActual} listaClientes={listaClientes} cargarDatos={cargarDatos} />}
         
-        {vistaActiva === 'clientes' && <Clientes listaClientes={listaClientes} clienteSeleccionado={clienteSeleccionado} setClienteSeleccionado={setClienteSeleccionado} listaRutinas={listaRutinas} todasLasRutinas={todasLasRutinas} handleClonarRutina={handleClonarRutina} abrirConstructor={abrirConstructor} handleEliminarRutina={handleEliminarRutina} cargarDatos={cargarDatos} mostrarAlerta={mostrarAlerta} usuarioActual={usuarioActual} />}
+        {vistaActiva === 'planes' && <Planes planActual={planEntrenador} actualizarPlanLocal={setPlanEntrenador} usuarioActual={usuarioActual} mostrarAlerta={mostrarAlerta} />}
+
+        {vistaActiva === 'clientes' && <Clientes planActual={planEntrenador} listaClientes={listaClientes} clienteSeleccionado={clienteSeleccionado} setClienteSeleccionado={setClienteSeleccionado} listaRutinas={listaRutinas} todasLasRutinas={todasLasRutinas} handleClonarRutina={handleClonarRutina} abrirConstructor={abrirConstructor} handleEliminarRutina={handleEliminarRutina} cargarDatos={cargarDatos} mostrarAlerta={mostrarAlerta} usuarioActual={usuarioActual} esPro={esPro} setMostrarPaywall={setMostrarPaywall} />}
 
         {vistaActiva === 'rutinas' && (
           <div className="mt-4 md:mt-8 animate-in fade-in duration-500">
@@ -282,10 +354,11 @@ function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
               {listaRutinas.map((rutina) => (
                 <div key={rutina.id} className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 md:p-6 flex flex-col shadow-lg relative group">
-                  <div className="absolute top-4 right-4 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                  <div className="absolute top-4 right-4 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex gap-2">
+                    <button onClick={() => { setRutinaAClonar(rutina); setMostrarModalClonarMasivo(true); }} className="w-8 h-8 flex items-center justify-center bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-lg" title="Asignar a Clientes (Clonar)">👥</button>
                     <button onClick={() => handleEliminarRutina(rutina.id)} className="w-8 h-8 flex items-center justify-center bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg" title="Eliminar Plantilla">🗑️</button>
                   </div>
-                  <h3 className="text-xl font-black text-white mb-2 pr-8">{rutina.nombre}</h3>
+                  <h3 className="text-xl font-black text-white mb-2 pr-16">{rutina.nombre}</h3>
                   <p className="text-zinc-400 text-sm mb-6 flex-1">{rutina.descripcion || 'Sin descripción'}</p>
                   <button onClick={() => abrirConstructor(rutina)} className="w-full bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-blue-500 py-3 rounded-xl font-bold transition flex justify-center gap-2"><span>⚙️</span> Editar Ejercicios</button>
                 </div>
@@ -317,6 +390,7 @@ function App() {
             actualizarEjercicio={actualizarEjercicio}
             esPro={esPro} 
             setMostrarPaywall={setMostrarPaywall}
+            setMostrarModalCatalogo={setMostrarModalCatalogo}
           />
         )}
       </main>
@@ -338,7 +412,7 @@ function App() {
       </nav>
 
       {/* 🌟 COMPONENTE MODAL PAYWALL INYECTADO */}
-      {mostrarPaywall && <PaywallModal onClose={() => setMostrarPaywall(false)} />}
+      {mostrarPaywall && <PaywallModal onClose={() => setMostrarPaywall(false)} onNavigateToPlanes={() => { setMostrarPaywall(false); setVistaActiva('planes'); }} />}
 
       {/* MODALES DE NOTIFICACIÓN ORIGINALES */}
       {notificacion && (
@@ -385,6 +459,106 @@ function App() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CLONAR MASIVO */}
+      {mostrarModalClonarMasivo && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl w-full max-w-md shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">Asignar a Múltiples Clientes</h2>
+              <button onClick={() => { setMostrarModalClonarMasivo(false); setClientesSeleccionados([]); setRutinaAClonar(null); }} className="text-zinc-400 hover:text-white">✕</button>
+            </div>
+            <p className="text-sm text-zinc-400 mb-4">Plantilla: <span className="text-blue-400 font-bold">{rutinaAClonar?.nombre}</span></p>
+            
+            <div className="max-h-60 overflow-y-auto mb-4 border border-zinc-800 rounded-xl p-2 bg-zinc-950">
+              {listaClientes.map(c => (
+                <label key={c.id} className="flex items-center gap-3 p-2 hover:bg-zinc-900 rounded-lg cursor-pointer transition">
+                  <input type="checkbox" className="w-5 h-5 accent-blue-500" 
+                    checked={clientesSeleccionados.includes(c.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) setClientesSeleccionados([...clientesSeleccionados, c.id]);
+                      else setClientesSeleccionados(clientesSeleccionados.filter(id => id !== c.id));
+                    }}
+                  />
+                  <span className="text-white font-medium">{c.nombre}</span>
+                </label>
+              ))}
+              {listaClientes.length === 0 && <p className="text-zinc-500 text-center text-sm py-4">No tienes clientes aún.</p>}
+            </div>
+
+            <div className="flex justify-between mt-4">
+              <button onClick={() => setClientesSeleccionados(clientesSeleccionados.length === listaClientes.length ? [] : listaClientes.map(c => c.id))} className="text-sm text-blue-400 hover:underline">
+                {clientesSeleccionados.length === listaClientes.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+              </button>
+              <button onClick={handleClonarMasivo} disabled={clientesSeleccionados.length === 0} className={`px-4 py-2 rounded-xl font-bold ${clientesSeleccionados.length > 0 ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'}`}>
+                Asignar ({clientesSeleccionados.length})
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL GESTIONAR CATÁLOGO */}
+      {mostrarModalCatalogo && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center mb-6 shrink-0">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">📚 Mi Catálogo</h2>
+              <button onClick={() => setMostrarModalCatalogo(false)} className="text-zinc-400 hover:text-white">✕</button>
+            </div>
+            
+            {/* Formulario nuevo ejercicio */}
+            <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 mb-4 shrink-0">
+              <h3 className="text-sm font-bold text-emerald-400 mb-3">Añadir Ejercicio Propio</h3>
+              <div className="flex flex-col gap-3">
+                <input type="text" placeholder="Nombre (ej. Press Inclinado en Máquina)" value={nuevoEjercicioCatalogo.nombre} onChange={(e) => setNuevoEjercicioCatalogo({...nuevoEjercicioCatalogo, nombre: e.target.value})} className="w-full bg-zinc-900 border border-zinc-700 text-white rounded-lg px-3 py-2 text-sm focus:border-emerald-500 outline-none" />
+                <div className="flex gap-2">
+                  <select value={nuevoEjercicioCatalogo.grupo_muscular} onChange={(e) => setNuevoEjercicioCatalogo({...nuevoEjercicioCatalogo, grupo_muscular: e.target.value})} className="flex-1 bg-zinc-900 border border-zinc-700 text-white rounded-lg px-3 py-2 text-sm focus:border-emerald-500 outline-none">
+                    <option value="Pecho">Pecho</option>
+                    <option value="Espalda">Espalda</option>
+                    <option value="Pierna">Pierna</option>
+                    <option value="Hombro">Hombro</option>
+                    <option value="Brazo">Brazo</option>
+                    <option value="Core">Core</option>
+                    <option value="Cardio">Cardio</option>
+                    <option value="Fullbody">Fullbody</option>
+                  </select>
+                  <button onClick={handleCrearEjercicio} className="bg-emerald-500 text-zinc-950 font-bold px-4 py-2 rounded-lg text-sm hover:bg-emerald-400 transition">Añadir</button>
+                </div>
+              </div>
+            </div>
+
+            {/* Lista de ejercicios del catálogo */}
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+              <p className="text-xs text-zinc-500 font-bold mb-2 uppercase">Tus Ejercicios ({catalogoEjercicios.filter(e => e.entrenador_id).length})</p>
+              {catalogoEjercicios.filter(e => e.entrenador_id).length === 0 ? (
+                 <p className="text-sm text-zinc-600 italic px-2">No has añadido ejercicios propios todavía.</p>
+              ) : (
+                catalogoEjercicios.filter(e => e.entrenador_id).map(e => (
+                  <div key={e.id} className="flex justify-between items-center bg-zinc-800/50 p-3 rounded-lg border border-zinc-700">
+                    <div>
+                      <p className="text-sm font-bold text-white">{e.nombre}</p>
+                      <p className="text-[10px] text-zinc-400 uppercase">{e.grupo_muscular}</p>
+                    </div>
+                    <button onClick={() => handleEliminarEjercicio(e.id)} className="text-red-400 hover:text-red-300 p-2">🗑️</button>
+                  </div>
+                ))
+              )}
+              
+              <div className="mt-6 mb-2 border-t border-zinc-800 pt-4">
+                <p className="text-xs text-zinc-500 font-bold uppercase">Ejercicios Globales ({catalogoEjercicios.filter(e => !e.entrenador_id).length})</p>
+              </div>
+              {catalogoEjercicios.filter(e => !e.entrenador_id).slice(0, 15).map(e => (
+                <div key={e.id} className="flex justify-between items-center bg-zinc-950 p-2 rounded-lg border border-zinc-800">
+                  <span className="text-sm text-zinc-300">{e.nombre}</span>
+                  <span className="text-[10px] text-zinc-600 bg-zinc-900 px-2 py-1 rounded">{e.grupo_muscular}</span>
+                </div>
+              ))}
+              <p className="text-xs text-zinc-600 italic text-center py-2">+ más ejercicios globales...</p>
+            </div>
           </div>
         </div>
       )}

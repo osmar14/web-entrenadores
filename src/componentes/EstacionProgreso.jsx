@@ -27,11 +27,16 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
 
   const cargarDatosProgreso = async () => {
     try {
-      const resEjercicios = await fetch(`https://backend-entrenadores-production.up.railway.app/api/rutina-ejercicios/${rutina.id}`);
+      const user = usuarioActual;
+      if (!user) return;
+      const token = await user.getIdToken();
+      const headersSeguros = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+
+      const resEjercicios = await fetch(`https://backend-entrenadores-production.up.railway.app/api/rutina-ejercicios/${rutina.id}`, { headers: headersSeguros });
       const datosEjercicios = await resEjercicios.json();
 
-      const resHistorial = await fetch(`https://backend-entrenadores-production.up.railway.app/api/progreso/${cliente.id}/${rutina.id}`);
-      const datosHistorial = await resHistorial.json();
+      const resHistorial = await fetch(`https://backend-entrenadores-production.up.railway.app/api/progreso/${cliente.id}/${rutina.id}`, { headers: headersSeguros });
+      const datosHistorial = resHistorial.ok ? await resHistorial.json() : [];
       setHistorialCliente(datosHistorial);
 
       const ejerciciosConSeries = datosEjercicios.map((ej, idx) => {
@@ -137,11 +142,12 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
     mostrarAlerta("Guardando datos...", "exito"); 
 
     try {
+      const token = await usuarioActual.getIdToken();
       const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/progreso', {
         method: 'POST', 
         headers: { 
           'Content-Type': 'application/json',
-          'usuario-email': usuarioActual.email 
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ cliente_id: cliente.id, rutina_id: rutina.id, registros: registrosAEnviar })
       });

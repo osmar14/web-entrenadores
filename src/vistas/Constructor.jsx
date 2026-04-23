@@ -6,8 +6,8 @@ export default function Constructor({
   ejerciciosFiltrados, gruposMusculares, filtroMusculo, setFiltroMusculo, 
   agregarAlConstructor, diasPlan, diaActivo, setDiaActivo, 
   agregarNuevoDia, renombrarDiaActivo, eliminarDiaActivo, 
-  ejerciciosDelDia, onDragEnd, quitarDelConstructor, actualizarEjercicio,
-  esPro, setMostrarPaywall // <- Banderas VIP
+  eliminarDiaActivo, ejerciciosDelDia, onDragEnd, quitarDelConstructor, actualizarEjercicio,
+  esPro, setMostrarPaywall, setMostrarModalCatalogo
 }) {
   return (
     <div className="mt-2 animate-in fade-in h-full flex flex-col">
@@ -25,7 +25,10 @@ export default function Constructor({
         {/* PANEL IZQUIERDO: CATÁLOGO */}
         <div className="lg:col-span-4 bg-zinc-900/50 border border-zinc-800 rounded-2xl flex flex-col overflow-hidden max-h-[40vh] md:max-h-full">
           <div className="p-3 md:p-4 border-b border-zinc-800 bg-zinc-900 shrink-0">
-            <h3 className="text-white font-bold mb-2 md:mb-3">📚 Catálogo ({ejerciciosFiltrados.length})</h3>
+            <div className="flex justify-between items-center mb-2 md:mb-3">
+              <h3 className="text-white font-bold">📚 Catálogo ({ejerciciosFiltrados.length})</h3>
+              <button onClick={() => setMostrarModalCatalogo(true)} className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-1 rounded border border-zinc-700">⚙️ Gestionar</button>
+            </div>
             <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
               {gruposMusculares.map(grupo => (
                 <button key={grupo} onClick={() => setFiltroMusculo(grupo)} className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${filtroMusculo === grupo ? 'bg-blue-500 text-white' : 'bg-zinc-950 text-zinc-400 border border-zinc-800'}`}>{grupo}</button>

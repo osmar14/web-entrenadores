@@ -19,8 +19,9 @@ export default function Inicio({ totalClientes, totalRutinas, usuarioActual, lis
     if (!usuarioActual) return;
     const cargarDashboard = async () => {
       try {
+        const token = await usuarioActual.getIdToken();
         const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/dashboard', {
-          headers: { 'Content-Type': 'application/json', 'entrenador-email': usuarioActual.email }
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
         if (res.ok) setDatosDashboard(data);
@@ -61,10 +62,11 @@ export default function Inicio({ totalClientes, totalRutinas, usuarioActual, lis
   const guardarAgenda = async () => {
     if (!clienteEditando) return;
     try {
+      const token = await usuarioActual.getIdToken();
       const diasString = diasEditando.join(','); // Lo volvemos a hacer texto para la BD
       const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/clientes/${clienteEditando.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'entrenador-email': usuarioActual.email },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ dias_entrenamiento: diasString })
       });
       if (res.ok) {

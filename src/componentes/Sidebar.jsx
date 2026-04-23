@@ -20,6 +20,9 @@ export default function Sidebar({ vistaActiva, setVistaActiva, setClienteSelecci
         <button onClick={() => { setVistaActiva('rutinas'); setClienteSeleccionado(null); }} className={`flex items-center gap-3 p-3 rounded-xl transition ${(vistaActiva === 'rutinas' || vistaActiva === 'constructor') ? 'bg-blue-500/10 text-blue-400 font-bold border border-blue-500/20' : 'text-zinc-400 font-semibold hover:bg-zinc-800'}`}>
           <span className="text-xl">📋</span> Rutinas
         </button>
+        <button onClick={() => { setVistaActiva('planes'); setClienteSeleccionado(null); }} className={`flex items-center gap-3 p-3 rounded-xl transition ${vistaActiva === 'planes' ? 'bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20' : 'text-zinc-400 font-semibold hover:bg-zinc-800'}`}>
+          <span className="text-xl">👑</span> Suscripción
+        </button>
       </nav>
 
       <button onClick={onSignOut} className="mt-auto flex items-center justify-center gap-2 p-3 rounded-xl transition text-red-400 font-semibold border border-red-500/20 hover:bg-red-500/10 bg-red-500/5">

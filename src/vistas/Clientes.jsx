@@ -5,14 +5,22 @@ import { auth } from '../firebase';
 import { sendPasswordResetEmail } from 'firebase/auth'; 
 
 export default function Clientes({ 
-  listaClientes, clienteSeleccionado, setClienteSeleccionado, 
+  planActual, listaClientes, clienteSeleccionado, setClienteSeleccionado, 
   listaRutinas, todasLasRutinas, handleClonarRutina,
   abrirConstructor, handleEliminarRutina, cargarDatos, mostrarAlerta,
-  usuarioActual, esPro, setMostrarPaywall // 👑 AGREGAMOS LAS BANDERAS PRO AQUÍ
+  usuarioActual, esPro, setMostrarPaywall 
 }) {
   const [mostrarModalAsignar, setMostrarModalAsignar] = useState(false);
   const [mostrarModalCliente, setMostrarModalCliente] = useState(false);
   const [nuevoCliente, setNuevoCliente] = useState({ nombre: '', email: '', objetivo: '' });
+  
+  const intentarNuevoCliente = () => {
+    if (planActual === 'TRIAL' && listaClientes.length >= 3) {
+      setMostrarPaywall(true);
+    } else {
+      setMostrarModalCliente(true);
+    }
+  };
   
   const [rutinaEnProgreso, setRutinaEnProgreso] = useState(null); 
   const [modoEstacion, setModoEstacion] = useState('registro'); 
@@ -32,13 +40,16 @@ export default function Clientes({
 
   const cargarExpediente = async (cliente_id) => {
     try {
-      const resNotas = await fetch(`https://backend-entrenadores-production.up.railway.app/api/notas/${cliente_id}`);
+      const token = await usuarioActual.getIdToken();
+      const headersSeguros = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+
+      const resNotas = await fetch(`https://backend-entrenadores-production.up.railway.app/api/notas/${cliente_id}`, { headers: headersSeguros });
       if(resNotas.ok) setNotasCliente(await resNotas.json());
 
-      const resVolumen = await fetch(`https://backend-entrenadores-production.up.railway.app/api/metricas/volumen/${cliente_id}`);
+      const resVolumen = await fetch(`https://backend-entrenadores-production.up.railway.app/api/metricas/volumen/${cliente_id}`, { headers: headersSeguros });
       if(resVolumen.ok) setVolumenSemanal(await resVolumen.json());
 
-      const resFeedback = await fetch(`https://backend-entrenadores-production.up.railway.app/api/feedback-cliente/${cliente_id}`);
+      const resFeedback = await fetch(`https://backend-entrenadores-production.up.railway.app/api/feedback-cliente/${cliente_id}`, { headers: headersSeguros });
       if(resFeedback.ok) setFeedbackCliente(await resFeedback.json());
     } catch (error) { console.error("Error", error); }
   };
@@ -127,14 +138,14 @@ export default function Clientes({
         <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex justify-between items-end mb-8">
             <div><h2 className="text-2xl font-black text-white mb-2">Mis Clientes</h2><p className="text-zinc-400 text-sm">Gestiona el progreso de tus atletas.</p></div>
-            <button onClick={() => setMostrarModalCliente(true)} className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-500 shadow-lg"><span className="text-sm">➕</span> Nuevo Cliente</button>
+            <button onClick={intentarNuevoCliente} className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-500 shadow-lg"><span className="text-sm">➕</span> Nuevo Cliente</button>
           </div>
           
           {listaClientes.length === 0 ? (
             <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-12 text-center flex flex-col items-center justify-center border-dashed">
               <div className="w-16 h-16 bg-zinc-800/50 rounded-full flex items-center justify-center text-3xl mb-4">👥</div>
               <h3 className="text-zinc-300 font-bold text-lg mb-2">Tu lista está vacía</h3>
-              <button onClick={() => setMostrarModalCliente(true)} className="bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-emerald-500 mt-4 shadow-lg">Agregar Primer Cliente</button>
+              <button onClick={intentarNuevoCliente} className="bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-emerald-500 mt-4 shadow-lg">Agregar Primer Cliente</button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -173,12 +184,21 @@ export default function Clientes({
                 <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-3 flex justify-between items-center"><span>Volumen (Últimos 7 días)</span><span className="text-emerald-500 text-xs">📊</span></p>
                 {volumenSemanal.length === 0 ? ( <div className="flex-1 flex items-center justify-center text-zinc-600 text-xs text-center px-4">Aún no hay series registradas esta semana.</div>) : (
                   <div className="space-y-3 overflow-y-auto custom-scrollbar flex-1 pr-2">
-                    {volumenSemanal.map((item, idx) => (
-                      <div key={idx}>
-                        <div className="flex justify-between text-xs font-bold mb-1"><span className="text-zinc-300">{item.grupo_muscular || 'General'}</span><span className="text-blue-400">{item.total_series} series</span></div>
-                        <div className="w-full bg-zinc-900 rounded-full h-1.5 overflow-hidden"><div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${Math.min((item.total_series / 20) * 100, 100)}%` }}></div></div>
-                      </div>
-                    ))}
+                    {volumenSemanal.map((item, idx) => {
+                      const colorSemaforo = !esPro ? 'bg-blue-500' : (item.semaforo === 'Rojo' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]' : item.semaforo === 'Amarillo' ? 'bg-amber-500' : 'bg-emerald-500');
+                      const colorTexto = !esPro ? 'text-blue-400' : (item.semaforo === 'Rojo' ? 'text-red-400' : item.semaforo === 'Amarillo' ? 'text-amber-400' : 'text-emerald-400');
+                      return (
+                        <div key={idx}>
+                          <div className="flex justify-between text-xs font-bold mb-1">
+                            <span className="text-zinc-300">{item.grupo_muscular || 'General'}</span>
+                            <span className={colorTexto}>{item.total_series} series</span>
+                          </div>
+                          <div className="w-full bg-zinc-900 rounded-full h-1.5 overflow-hidden">
+                            <div className={`${colorSemaforo} h-1.5 rounded-full transition-all duration-500`} style={{ width: `${Math.min((item.total_series / 20) * 100, 100)}%` }}></div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -233,7 +253,13 @@ export default function Clientes({
           </div>
 
           {/* 🌟 AQUÍ INYECTAMOS EL LIENZO ANALÍTICO PRO */}
-          <LienzoAnalitico esPro={esPro} setMostrarPaywall={setMostrarPaywall} />
+          <LienzoAnalitico 
+             esPro={esPro} 
+             setMostrarPaywall={setMostrarPaywall} 
+             cliente={clienteSeleccionado} 
+             volumenSemanal={volumenSemanal} 
+             usuarioActual={usuarioActual} 
+          />
 
           <div className="mt-8">
             <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><span>📋</span> Plan de Entrenamiento Actual</h3>
