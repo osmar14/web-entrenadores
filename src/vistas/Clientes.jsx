@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import EstacionProgreso from '../componentes/EstacionProgreso';
-import { auth } from '../firebase'; // 🌟 IMPORTAMOS FIREBASE
-import { sendPasswordResetEmail } from 'firebase/auth'; // 🌟 IMPORTAMOS LA FUNCIÓN DE CORREO
+import LienzoAnalitico from '../componentes/LienzoAnalitico'; // 🌟 IMPORTAMOS TU NUEVA JOYA
+import { auth } from '../firebase'; 
+import { sendPasswordResetEmail } from 'firebase/auth'; 
 
 export default function Clientes({ 
   listaClientes, clienteSeleccionado, setClienteSeleccionado, 
   listaRutinas, todasLasRutinas, handleClonarRutina,
   abrirConstructor, handleEliminarRutina, cargarDatos, mostrarAlerta,
-  usuarioActual 
+  usuarioActual, esPro, setMostrarPaywall // 👑 AGREGAMOS LAS BANDERAS PRO AQUÍ
 }) {
   const [mostrarModalAsignar, setMostrarModalAsignar] = useState(false);
   const [mostrarModalCliente, setMostrarModalCliente] = useState(false);
@@ -49,9 +50,13 @@ export default function Clientes({
   const handleGuardarNota = async () => {
     if (!nuevaNota.mensaje) return mostrarAlerta("El mensaje no puede estar vacío", "error");
     try {
+      const token = await usuarioActual.getIdToken(); // 🛡️ OBTENEMOS TOKEN SEGURO
       const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/notas', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'usuario-email': usuarioActual.email },
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}` // 🛡️ ENVIAMOS TOKEN
+        },
         body: JSON.stringify({ cliente_id: clienteSeleccionado.id, categoria: nuevaNota.categoria, mensaje: nuevaNota.mensaje })
       });
       if (res.ok) {
@@ -63,25 +68,29 @@ export default function Clientes({
   };
 
   const handleGuardarCliente = async () => {
-    // 🛑 EL MURO DE PAGO: LÍMITE DE 3 CLIENTES
-    if (listaClientes.length >= 3) {
-      return alert("🔒 LÍMITE DE PLAN GRATUITO ALCANZADO\n\nTu plan actual te permite un máximo de 3 clientes activos.\n\nPronto lanzaremos el Plan Pro para clientes ilimitados.");
-    }
-
     if (!nuevoCliente.nombre || !nuevoCliente.email) return mostrarAlerta("Nombre y correo son obligatorios", "error");
-    
-    mostrarAlerta("Creando cuenta y enviando correo...", "exito");
+    mostrarAlerta("Creando cuenta y verificando plan...", "exito");
 
     try {
+      const token = await usuarioActual.getIdToken(); // 🛡️ OBTENEMOS TOKEN SEGURO
       const res = await fetch('https://backend-entrenadores-production.up.railway.app/api/clientes', {
         method: 'POST', 
-        headers: { 'Content-Type': 'application/json', 'usuario-email': usuarioActual.email }, 
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}` // 🛡️ ENVIAMOS TOKEN AL BACKEND
+        }, 
         body: JSON.stringify(nuevoCliente)
       });
+      
       const data = await res.json();
 
+      // 🛑 EL MURO DE PAGO DESDE EL BACKEND (Si el backend dice que llegamos al límite de 4)
+      if (res.status === 402) {
+        return alert(`🔒 LÍMITE ALCANZADO\n\n${data.mensaje}`);
+      }
+
       if (res.ok) {
-        // 📧 MAGIA: DISPARAMOS EL CORREO AUTOMÁTICO DE FIREBASE
+        // 📧 CORREO AUTOMÁTICO DE FIREBASE
         try {
           await sendPasswordResetEmail(auth, nuevoCliente.email);
           alert(`✅ ¡Cuenta creada!\n\nSe ha enviado un correo automático a ${nuevoCliente.email} para que cree su propia contraseña y descargue la app.`);
@@ -117,7 +126,7 @@ export default function Clientes({
       {!clienteSeleccionado && !rutinaEnProgreso && (
         <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex justify-between items-end mb-8">
-            <div><h2 className="text-2xl font-black text-white mb-2">Mis Clientes</h2><p className="text-zinc-400 text-sm">Gestiona el progreso de tus atletas. ({listaClientes.length}/3 en Plan Gratis)</p></div>
+            <div><h2 className="text-2xl font-black text-white mb-2">Mis Clientes</h2><p className="text-zinc-400 text-sm">Gestiona el progreso de tus atletas.</p></div>
             <button onClick={() => setMostrarModalCliente(true)} className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-500 shadow-lg"><span className="text-sm">➕</span> Nuevo Cliente</button>
           </div>
           
@@ -147,6 +156,7 @@ export default function Clientes({
           <button onClick={() => setClienteSeleccionado(null)} className="text-zinc-500 hover:text-zinc-300 font-medium text-sm flex items-center gap-2 mb-6 transition">&larr; Volver a Mis Clientes</button>
           
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-3xl p-6 mb-8 shadow-xl flex flex-col lg:flex-row gap-8">
+            {/* PANEL IZQUIERDO: INFO DEL CLIENTE */}
             <div className="lg:w-1/3 flex flex-col gap-4 border-b lg:border-b-0 lg:border-r border-zinc-800 pb-6 lg:pb-0 lg:pr-8">
               <div className="flex items-center gap-5 mb-2">
                 <div className="w-20 h-20 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center text-4xl font-black text-zinc-900 shadow-lg shrink-0">{clienteSeleccionado.nombre.charAt(0).toUpperCase()}</div>
@@ -174,6 +184,7 @@ export default function Clientes({
               </div>
             </div>
 
+            {/* PANEL DERECHO: BITÁCORA */}
             <div className="lg:w-2/3 flex flex-col h-96">
               <div className="flex justify-between items-center mb-4 shrink-0">
                 <div className="flex bg-zinc-900 border border-zinc-800 p-1 rounded-xl shadow-inner">
@@ -221,7 +232,10 @@ export default function Clientes({
             </div>
           </div>
 
-          <div>
+          {/* 🌟 AQUÍ INYECTAMOS EL LIENZO ANALÍTICO PRO */}
+          <LienzoAnalitico esPro={esPro} setMostrarPaywall={setMostrarPaywall} />
+
+          <div className="mt-8">
             <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><span>📋</span> Plan de Entrenamiento Actual</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {rutinasDelCliente.map(rutina => (

@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import Login from './vistas/Login';
 import Inicio from './vistas/Inicio';
 import Clientes from './vistas/Clientes';
-import Constructor from './vistas/Constructor'; // 🌟 NUEVO COMPONENTE IMPORTADO
+import Constructor from './vistas/Constructor';
+import Sidebar from './componentes/Sidebar';
+import PaywallModal from './componentes/PaywallModal';
 import { auth } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 function App() {
-  // 👑 ESTADOS DEL PLAN PRO Y MURO DE CRISTAL (INYECTADOS)
+  // 👑 ESTADOS DEL PLAN PRO Y MURO DE CRISTAL
   const [planEntrenador, setPlanEntrenador] = useState('BASICO'); // Cambia a 'PRO' para ver cómo se desbloquea
   const esPro = planEntrenador === 'PRO' || planEntrenador === 'TRIAL';
   const [mostrarPaywall, setMostrarPaywall] = useState(false);
@@ -140,7 +142,6 @@ function App() {
           reps_objetivo: e.reps_objetivo,
           dia_nombre: e.dia_nombre,
           notas_entrenador: e.notas_entrenador || '',
-          // Carga de variables Pro guardadas en BD
           rir_objetivo: e.rir_objetivo || '',
           tempo: e.tempo || '',
           es_unilateral: e.es_unilateral === 1 ? true : false,
@@ -191,7 +192,6 @@ function App() {
   const gruposMusculares = ['Todos', ...new Set(catalogoEjercicios.map(e => e.grupo_muscular || 'General'))];
   const ejerciciosFiltrados = filtroMusculo === 'Todos' ? catalogoEjercicios : catalogoEjercicios.filter(e => (e.grupo_muscular || 'General') === filtroMusculo);
 
-  // 🌟 VARIABLE PRO INYECTADA AL AGREGAR
   const agregarAlConstructor = (ejercicio) => {
     setEjerciciosEnRutina([...ejerciciosEnRutina, {
       ...ejercicio, id_unico: Date.now(), series_objetivo: 3, reps_objetivo: '10', dia_nombre: diaActivo, notas_entrenador: '',
@@ -255,28 +255,20 @@ function App() {
   return (
     <div className="flex h-[100dvh] w-full bg-zinc-950 text-white font-sans selection:bg-emerald-500 selection:text-white relative overflow-hidden">
 
-      {/* SIDEBAR PC */}
-      <aside className="hidden md:flex w-64 bg-zinc-900/50 border-r border-zinc-800 flex-col p-6 backdrop-blur-xl shrink-0 z-10">
-        <div className="mb-10 flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg"><span className="text-xl font-black text-white">C</span></div>
-          <h2 className="text-2xl font-black text-white">Coach<span className="text-blue-500">board</span></h2>
-        </div>
-        <nav className="flex flex-col gap-2 flex-1">
-          <button onClick={() => { setVistaActiva('inicio'); setClienteSeleccionado(null); }} className={`flex items-center gap-3 p-3 rounded-xl transition ${vistaActiva === 'inicio' ? 'bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20' : 'text-zinc-400 font-semibold hover:bg-zinc-800'}`}><span className="text-xl">🏠</span> Inicio</button>
-          <button onClick={() => { setVistaActiva('clientes'); setClienteSeleccionado(null); }} className={`flex items-center gap-3 p-3 rounded-xl transition ${vistaActiva === 'clientes' ? 'bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20' : 'text-zinc-400 font-semibold hover:bg-zinc-800'}`}><span className="text-xl">👥</span> Mis Clientes</button>
-          <button onClick={() => { setVistaActiva('rutinas'); setClienteSeleccionado(null); }} className={`flex items-center gap-3 p-3 rounded-xl transition ${(vistaActiva === 'rutinas' || vistaActiva === 'constructor') ? 'bg-blue-500/10 text-blue-400 font-bold border border-blue-500/20' : 'text-zinc-400 font-semibold hover:bg-zinc-800'}`}><span className="text-xl">📋</span> Rutinas</button>
-        </nav>
-        <button onClick={() => signOut(auth)} className="mt-auto flex items-center justify-center gap-2 p-3 rounded-xl transition text-red-400 font-semibold border border-red-500/20 hover:bg-red-500/10 bg-red-500/5"><span>🚪</span> Cerrar Sesión</button>
-      </aside>
+      {/* 🌟 COMPONENTE SIDEBAR INYECTADO */}
+      <Sidebar 
+        vistaActiva={vistaActiva} 
+        setVistaActiva={setVistaActiva} 
+        setClienteSeleccionado={setClienteSeleccionado} 
+        onSignOut={() => signOut(auth)} 
+      />
 
-      {/* CONTENEDOR PRINCIPAL */}
       <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 w-full relative pb-28 md:pb-8">
         <header className="mb-6 flex flex-row justify-between items-center gap-4">
           <div><p className="text-emerald-400 font-medium mb-1 text-sm md:text-base">Tu imperio te espera</p><h1 className="text-2xl md:text-3xl font-extrabold text-white">Hola, {obtenerNombreUsuario()} 👋</h1></div>
           <button onClick={() => { setMostrarModal(true); setPasoModal('formulario'); setNuevaRutina({ id: null, nombre: '', descripcion: '', nivel: 'Principiante' }); }} className="bg-emerald-500 text-zinc-950 px-3 py-2 md:px-4 md:py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-400 shadow-lg shrink-0"><span className="hidden md:inline text-sm">➕</span><span className="md:hidden text-lg">➕</span> <span className="hidden md:inline">Crear</span></button>
         </header>
 
-        {/* RUTEO INTERNO DE VISTAS */}
         {vistaActiva === 'inicio' && <Inicio totalClientes={totalClientes} totalRutinas={totalRutinas} usuarioActual={usuarioActual} listaClientes={listaClientes} cargarDatos={cargarDatos} />}
         
         {vistaActiva === 'clientes' && <Clientes listaClientes={listaClientes} clienteSeleccionado={clienteSeleccionado} setClienteSeleccionado={setClienteSeleccionado} listaRutinas={listaRutinas} todasLasRutinas={todasLasRutinas} handleClonarRutina={handleClonarRutina} abrirConstructor={abrirConstructor} handleEliminarRutina={handleEliminarRutina} cargarDatos={cargarDatos} mostrarAlerta={mostrarAlerta} usuarioActual={usuarioActual} />}
@@ -345,28 +337,8 @@ function App() {
         </button>
       </nav>
 
-      {/* MODAL PAYWALL (MURO DE CRISTAL) */}
-      {mostrarPaywall && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[80] p-4">
-          <div className="bg-zinc-900 border border-amber-500/30 p-6 md:p-8 rounded-3xl w-full max-w-md shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-600 to-yellow-400"></div>
-            <button onClick={() => setMostrarPaywall(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white text-2xl">✕</button>
-            <div className="text-center mb-6">
-              <span className="text-5xl mb-4 block">👑</span>
-              <h3 className="text-2xl font-black text-white">Prescripción Científica</h3>
-              <p className="text-zinc-400 text-sm mt-2">Estás usando el plan Básico. Actualiza a Pro para desbloquear variables avanzadas.</p>
-            </div>
-            <ul className="space-y-3 mb-8">
-              <li className="flex items-center gap-3 text-sm text-zinc-300"><span className="text-amber-500">✔</span> <b>Tempo:</b> Controla el tiempo bajo tensión.</li>
-              <li className="flex items-center gap-3 text-sm text-zinc-300"><span className="text-amber-500">✔</span> <b>RIR/RPE:</b> Mide la fatiga central real.</li>
-              <li className="flex items-center gap-3 text-sm text-zinc-300"><span className="text-amber-500">✔</span> <b>Unilateral:</b> Cálculo de tonelaje preciso.</li>
-            </ul>
-            <button onClick={() => { setMostrarPaywall(false); alert("Redirigir a pasarela de pago"); }} className="w-full bg-gradient-to-r from-amber-500 to-yellow-400 text-zinc-950 py-3 rounded-xl font-black shadow-lg hover:scale-[1.02] transition-transform">
-              Actualizar a Pro - $500/mes
-            </button>
-          </div>
-        </div>
-      )}
+      {/* 🌟 COMPONENTE MODAL PAYWALL INYECTADO */}
+      {mostrarPaywall && <PaywallModal onClose={() => setMostrarPaywall(false)} />}
 
       {/* MODALES DE NOTIFICACIÓN ORIGINALES */}
       {notificacion && (
