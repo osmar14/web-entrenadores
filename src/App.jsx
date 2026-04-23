@@ -39,7 +39,6 @@ function App() {
   const [mostrarModalCatalogo, setMostrarModalCatalogo] = useState(false);
   const [nuevoEjercicioCatalogo, setNuevoEjercicioCatalogo] = useState({nombre: '', grupo_muscular: 'Pecho', tipo_metrica: 'reps'});
 
-  const obtenerNombreUsuario = () => usuarioActual?.displayName || usuarioActual?.email?.split('@')[0] || "Coach";
   const [pasoModal, setPasoModal] = useState('formulario');
   const [nuevaRutina, setNuevaRutina] = useState({ id: null, nombre: '', descripcion: '', nivel: 'Principiante' });
   const [notificacion, setNotificacion] = useState(null);

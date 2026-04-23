@@ -6,7 +6,7 @@ export default function Constructor({
   ejerciciosFiltrados, gruposMusculares, filtroMusculo, setFiltroMusculo, 
   agregarAlConstructor, diasPlan, diaActivo, setDiaActivo, 
   agregarNuevoDia, renombrarDiaActivo, eliminarDiaActivo, 
-  eliminarDiaActivo, ejerciciosDelDia, onDragEnd, quitarDelConstructor, actualizarEjercicio,
+  ejerciciosDelDia, onDragEnd, quitarDelConstructor, actualizarEjercicio,
   esPro, setMostrarPaywall, setMostrarModalCatalogo
 }) {
   return (
