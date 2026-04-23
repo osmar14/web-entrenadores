@@ -286,6 +286,13 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
                          {ej.notas_entrenador && (
                            <p className="text-[10px] text-emerald-400 italic mt-1 bg-emerald-500/10 px-2 py-1 rounded-md inline-block border border-emerald-500/20">👨‍🏫 {ej.notas_entrenador}</p>
                          )}
+                         {(ej.tempo || ej.es_unilateral === 1 || ej.segundos_objetivo) && (
+                           <div className="flex gap-2 mt-2">
+                             {ej.tempo && <span className="bg-zinc-800 text-zinc-400 text-[10px] px-2 py-0.5 rounded font-bold border border-zinc-700">⏱️ Tempo: {ej.tempo}</span>}
+                             {ej.es_unilateral === 1 && <span className="bg-amber-500/10 text-amber-400 text-[10px] px-2 py-0.5 rounded font-bold border border-amber-500/20">Unilateral</span>}
+                             {ej.segundos_objetivo && <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded font-bold border border-blue-500/20">⏳ {ej.segundos_objetivo} segs</span>}
+                           </div>
+                         )}
                        </div>
                      </div>
                      <div className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 shadow-inner">

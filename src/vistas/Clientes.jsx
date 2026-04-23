@@ -3,6 +3,8 @@ import EstacionProgreso from '../componentes/EstacionProgreso';
 import LienzoAnalitico from '../componentes/LienzoAnalitico'; // 🌟 IMPORTAMOS TU NUEVA JOYA
 import { auth } from '../firebase'; 
 import { sendPasswordResetEmail } from 'firebase/auth'; 
+import { io } from 'socket.io-client';
+import jsPDF from 'jspdf';
 
 export default function Clientes({ 
   planActual, listaClientes, clienteSeleccionado, setClienteSeleccionado, 
@@ -31,7 +33,60 @@ export default function Clientes({
   
   const [volumenSemanal, setVolumenSemanal] = useState([]);
   const [feedbackCliente, setFeedbackCliente] = useState([]);
+  const [entrenamientosRecientes, setEntrenamientosRecientes] = useState([]);
+  const [fotosCliente, setFotosCliente] = useState([]);
   const [tabNotas, setTabNotas] = useState('coach'); 
+
+  // 🔴 LIVE TRACKING
+  const [liveSessions, setLiveSessions] = useState({});
+  const [modalLiveVisible, setModalLiveVisible] = useState(false);
+  const [sessionLiveSeleccionada, setSessionLiveSeleccionada] = useState(null);
+
+  useEffect(() => {
+    if (listaClientes.length > 0) {
+      const coachId = listaClientes[0].entrenador_id;
+      if (!coachId) return;
+
+      const socket = io('https://backend-entrenadores-production.up.railway.app');
+      
+      socket.on('connect', () => {
+        socket.emit('unirse_como_coach', coachId);
+      });
+
+      socket.on('cliente_entrenando', (data) => {
+        setLiveSessions(prev => ({ ...prev, [data.clienteId]: { status: 'entrenando', data, updates: [] } }));
+        mostrarAlerta(`🔴 ${data.clienteNombre} ha comenzado a entrenar`, 'exito');
+      });
+
+      socket.on('progreso_en_vivo', (data) => {
+        setLiveSessions(prev => {
+          const session = prev[data.clienteId];
+          if (!session) return prev;
+          const newUpdates = [...session.updates];
+          const existingIdx = newUpdates.findIndex(u => u.ejercicio === data.ejercicio && u.set === data.set);
+          if (existingIdx >= 0) newUpdates[existingIdx] = data;
+          else newUpdates.push(data);
+          
+          if (sessionLiveSeleccionada && sessionLiveSeleccionada.data.clienteId === data.clienteId) {
+            setSessionLiveSeleccionada({ ...session, updates: newUpdates });
+          }
+          return { ...prev, [data.clienteId]: { ...session, updates: newUpdates } };
+        });
+      });
+
+      socket.on('cliente_termino', (data) => {
+        setLiveSessions(prev => {
+          const newSessions = { ...prev };
+          delete newSessions[data.clienteId];
+          return newSessions;
+        });
+        mostrarAlerta(`✅ ${data.clienteNombre} ha terminado su rutina`, 'exito');
+        setModalLiveVisible(false);
+      });
+
+      return () => socket.disconnect();
+    }
+  }, [listaClientes]);
 
   const rutinasDelCliente = clienteSeleccionado ? todasLasRutinas.filter(r => r.cliente_id === clienteSeleccionado.id) : [];
   const emojisGym = ['🏋️‍♂️', '💪', '🔥', '⚡', '🦍', '🥇', '🦾'];
@@ -52,7 +107,45 @@ export default function Clientes({
 
       const resFeedback = await fetch(`https://backend-entrenadores-production.up.railway.app/api/feedback-cliente/${cliente_id}`, { headers: headersSeguros });
       if(resFeedback.ok) setFeedbackCliente(await resFeedback.json());
+
+      const resRecientes = await fetch(`https://backend-entrenadores-production.up.railway.app/api/progreso-global/${cliente_id}`, { headers: headersSeguros });
+      if(resRecientes.ok) setEntrenamientosRecientes(await resRecientes.json());
+
+      const resFotos = await fetch(`https://backend-entrenadores-production.up.railway.app/api/fotos/${cliente_id}`, { headers: headersSeguros });
+      if(resFotos.ok) setFotosCliente(await resFotos.json());
     } catch (error) { console.error("Error", error); }
+  };
+
+  const handleGenerarPDF = async () => {
+    if (!esPro) return mostrarAlerta("Esta función es exclusiva del Plan PRO", "error");
+    try {
+      const doc = new jsPDF();
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.text(`Reporte de Desempeño`, 20, 20);
+      doc.setFontSize(16);
+      doc.text(`Atleta: ${clienteSeleccionado.nombre}`, 20, 30);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(12);
+      doc.text(`Fecha de emisión: ${new Date().toLocaleDateString()}`, 20, 40);
+      
+      if (entrenamientosRecientes.length > 0) {
+         doc.setFont("helvetica", "bold");
+         doc.text(`Últimas Sesiones de Entrenamiento:`, 20, 60);
+         doc.setFont("helvetica", "normal");
+         let y = 70;
+         entrenamientosRecientes.forEach((ent) => {
+            doc.text(`• ${new Date(ent.fecha).toLocaleDateString()} - ${ent.rutina_nombre || 'Rutina Desconocida'}`, 25, y);
+            y += 10;
+         });
+      }
+
+      doc.save(`Reporte_Kaizen_${clienteSeleccionado.nombre.replace(/\s+/g, '_')}.pdf`);
+      mostrarAlerta("Reporte PDF generado exitosamente 📄", "exito");
+    } catch (error) {
+      console.error(error);
+      mostrarAlerta("Error al generar PDF", "error");
+    }
   };
 
   useEffect(() => {
@@ -154,11 +247,19 @@ export default function Clientes({
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {listaClientes.map((cliente) => (
-                <div key={cliente.id} onClick={() => setClienteSeleccionado(cliente)} className="bg-zinc-900/60 border border-zinc-800 hover:border-emerald-500/50 transition-all duration-300 rounded-2xl p-6 flex flex-col shadow-lg cursor-pointer group">
+                <div key={cliente.id} onClick={() => setClienteSeleccionado(cliente)} className={`bg-zinc-900/60 border ${liveSessions[cliente.id] ? 'border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.3)]' : 'border-zinc-800 hover:border-emerald-500/50'} transition-all duration-300 rounded-2xl p-6 flex flex-col shadow-lg cursor-pointer group relative`}>
+                  {liveSessions[cliente.id] && (
+                     <div className="absolute -top-3 -right-3 bg-red-600 animate-bounce text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg z-10 border-2 border-zinc-900">🔴 EN VIVO</div>
+                  )}
                   <div className="w-14 h-14 bg-gradient-to-br from-zinc-700 to-zinc-800 border border-zinc-600 rounded-full flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform shadow-inner">{cliente.nombre.charAt(0).toUpperCase()}</div>
                   <h3 className="text-xl font-black text-white mb-1">{cliente.nombre}</h3>
                   <p className="text-zinc-400 text-xs uppercase tracking-wider font-bold mb-4 flex-1">🎯 Obj: <span className="text-zinc-300 normal-case font-normal">{cliente.objetivo || 'General'}</span></p>
-                  <div className="mt-auto flex items-center justify-between border-t border-zinc-800 pt-4"><span className="text-xs text-zinc-500 flex items-center gap-1">🟢 Activo</span><span className="text-emerald-400 text-sm font-bold group-hover:translate-x-1 transition-transform">Ver perfil &rarr;</span></div>
+                  
+                  {liveSessions[cliente.id] ? (
+                    <button onClick={(e) => { e.stopPropagation(); setSessionLiveSeleccionada(liveSessions[cliente.id]); setModalLiveVisible(true); }} className="w-full mt-auto bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded-xl text-xs transition shadow-lg shadow-red-600/20">👁️ Ver Entreno en Vivo</button>
+                  ) : (
+                    <div className="mt-auto flex items-center justify-between border-t border-zinc-800 pt-4"><span className="text-xs text-zinc-500 flex items-center gap-1">🟢 Activo</span><span className="text-emerald-400 text-sm font-bold group-hover:translate-x-1 transition-transform">Ver perfil &rarr;</span></div>
+                  )}
                 </div>
               ))}
             </div>
@@ -214,6 +315,7 @@ export default function Clientes({
                 <div className="flex bg-zinc-900 border border-zinc-800 p-1 rounded-xl shadow-inner">
                   <button onClick={() => setTabNotas('coach')} className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${tabNotas === 'coach' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}>👨‍🏫 Bitácora Médica</button>
                   <button onClick={() => setTabNotas('cliente')} className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${tabNotas === 'cliente' ? 'bg-zinc-800 text-emerald-400 shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}>🗣️ Feedback Cliente</button>
+                  <button onClick={() => setTabNotas('progreso')} className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${tabNotas === 'progreso' ? 'bg-zinc-800 text-blue-400 shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}>📊 Análisis y Gráficas</button>
                 </div>
                 {tabNotas === 'coach' && ( <button onClick={() => setMostrarModalNota(true)} className="bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 border border-blue-500/20 px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">➕ Agregar Nota</button> )}
               </div>
@@ -237,6 +339,64 @@ export default function Clientes({
                       })}
                     </div>
                   )
+                ) : tabNotas === 'progreso' ? (
+                  <div className="flex flex-col h-full space-y-6">
+                    <div>
+                      <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><span>⏱️</span> Últimos Entrenamientos</h3>
+                      {entrenamientosRecientes.length === 0 ? (
+                        <div className="text-center p-6 bg-zinc-900/50 rounded-xl border border-zinc-800 border-dashed"><p className="text-xs text-zinc-500">No hay entrenamientos recientes.</p></div>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          {entrenamientosRecientes.map((ent, idx) => (
+                            <div key={idx} className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl flex justify-between items-center hover:border-zinc-700 transition">
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold text-white">{ent.rutina_nombre || 'Rutina Eliminada'}</span>
+                                <span className="text-[10px] text-zinc-500">{new Date(ent.fecha).toLocaleDateString()}</span>
+                              </div>
+                              <button onClick={() => { const rut = rutinasDelCliente.find(r => r.id === ent.rutina_id); if (rut) abrirParaAnalizar(rut); else mostrarAlerta('Rutina no encontrada', 'error'); }} className="text-blue-400 text-xs font-bold bg-blue-500/10 px-3 py-1.5 rounded hover:bg-blue-500/20 transition border border-blue-500/20">Ver Detalle</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><span>📸</span> Fotos de Progreso</h3>
+                      {fotosCliente.length === 0 ? (
+                         <div className="text-center p-6 bg-zinc-900/50 rounded-xl border border-zinc-800 border-dashed"><p className="text-xs text-zinc-500">El cliente no ha subido fotos.</p></div>
+                      ) : (
+                         <div className="flex gap-3 overflow-x-auto custom-scrollbar pb-2">
+                           {fotosCliente.map((foto) => (
+                              <div key={foto.id} className="min-w-[120px] bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-sm">
+                                 <img src={foto.url_foto} alt="Progreso" className="w-[120px] h-[160px] object-cover" />
+                                 <div className="p-2 text-center bg-zinc-950">
+                                   <p className="text-[10px] text-zinc-400 font-bold">{new Date(foto.fecha_captura).toLocaleDateString()}</p>
+                                 </div>
+                              </div>
+                           ))}
+                         </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1">
+                      <h3 className="text-sm font-bold text-white mb-3">Historial por Rutina</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {rutinasDelCliente.map(rut => (
+                          <button key={rut.id} onClick={() => abrirParaAnalizar(rut)} className="bg-zinc-900 border border-zinc-800 hover:border-blue-500/50 p-4 rounded-xl text-left transition flex flex-col items-start gap-1 group">
+                            <span className="text-sm font-bold text-white group-hover:text-blue-400 transition">{rut.nombre}</span>
+                            <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Abrir Análisis &rarr;</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {esPro && (
+                      <div className="mt-auto pt-4 border-t border-zinc-800">
+                        <button onClick={handleGenerarPDF} className="w-full bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-500/30 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm shadow-sm">
+                          <span>📄</span> Generar Reporte PDF
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   feedbackUnico.length === 0 ? ( <div className="h-full flex flex-col items-center justify-center text-center opacity-50"><span className="text-3xl mb-2">🗣️</span><p className="text-sm font-bold text-zinc-400">Aún no hay feedback</p></div> ) : (
                     <div className="space-y-3">
@@ -281,7 +441,6 @@ export default function Clientes({
                       <button onClick={() => handleEliminarRutina(rutina.id)} className="w-12 bg-zinc-950 border border-zinc-800 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 py-2.5 rounded-xl font-bold transition flex items-center justify-center" title="Eliminar Plan">✕</button>
                     </div>
                     <button onClick={() => abrirParaAnotar(rutina)} className="w-full bg-emerald-600 border border-emerald-500 text-white hover:bg-emerald-500 py-3 rounded-xl font-bold transition text-sm shadow-lg flex items-center justify-center gap-2"><span>📝</span> Anotar Entrenamiento Hoy</button>
-                    <button onClick={() => abrirParaAnalizar(rutina)} className="w-full bg-blue-600/10 border border-blue-500/30 text-blue-400 hover:bg-blue-600/20 py-2.5 rounded-xl font-bold transition text-sm flex items-center justify-center gap-2 mt-1"><span>📊</span> Ver Progreso</button>
                   </div>
                 </div>
               ))}
@@ -336,6 +495,64 @@ export default function Clientes({
             <div className="flex justify-end gap-3 mt-8">
               <button onClick={() => setMostrarModalCliente(false)} className="text-zinc-400 font-bold hover:text-white px-4 py-2">Cancelar</button>
               <button onClick={handleGuardarCliente} className="bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-emerald-500 shadow-lg shadow-emerald-500/20">Crear y Enviar Correo</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🔴 MODAL COACHBOARD LIVE */}
+      {modalLiveVisible && sessionLiveSeleccionada && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[110] p-4">
+          <div className="bg-zinc-900 border border-red-500/50 p-6 rounded-3xl w-full max-w-2xl shadow-[0_0_30px_rgba(220,38,38,0.2)] flex flex-col max-h-[80vh]">
+            <div className="flex justify-between items-center mb-6 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
+                <h2 className="text-xl font-black text-white">Transmisión en Vivo</h2>
+              </div>
+              <button onClick={() => setModalLiveVisible(false)} className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 hover:text-white">✕</button>
+            </div>
+
+            <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 mb-4 shrink-0 flex justify-between items-center">
+               <div>
+                 <p className="text-zinc-400 text-xs font-bold uppercase">Cliente Entrenando</p>
+                 <p className="text-white font-black text-lg">{sessionLiveSeleccionada.data.clienteNombre}</p>
+               </div>
+               <div className="text-right">
+                 <p className="text-zinc-400 text-xs font-bold uppercase">Rutina</p>
+                 <p className="text-emerald-400 font-black text-sm">{sessionLiveSeleccionada.data.rutinaNombre}</p>
+               </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3">
+              {sessionLiveSeleccionada.updates.length === 0 ? (
+                 <div className="flex flex-col items-center justify-center py-10 opacity-50">
+                    <span className="text-4xl mb-4">👀</span>
+                    <p className="text-white font-bold">Esperando movimientos...</p>
+                    <p className="text-zinc-400 text-sm">Los datos aparecerán aquí cuando el cliente escriba en la app.</p>
+                 </div>
+              ) : (
+                 [...sessionLiveSeleccionada.updates].reverse().map((upd, idx) => (
+                    <div key={idx} className={`p-4 rounded-xl border flex justify-between items-center transition-all ${upd.completado ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-zinc-900 border-zinc-700'}`}>
+                       <div>
+                         <p className="text-sm font-black text-white mb-1">{upd.ejercicio}</p>
+                         <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Set {upd.set}</p>
+                       </div>
+                       <div className="flex items-center gap-4">
+                         <div className="text-right">
+                           <p className="text-[10px] text-zinc-500 uppercase font-black">Peso</p>
+                           <p className="text-blue-400 font-bold">{upd.peso ? `${upd.peso} kg` : '--'}</p>
+                         </div>
+                         <div className="text-right">
+                           <p className="text-[10px] text-zinc-500 uppercase font-black">Reps</p>
+                           <p className="text-emerald-400 font-bold">{upd.reps ? upd.reps : '--'}</p>
+                         </div>
+                         {upd.completado && (
+                           <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/50">✓</div>
+                         )}
+                       </div>
+                    </div>
+                 ))
+              )}
             </div>
           </div>
         </div>
