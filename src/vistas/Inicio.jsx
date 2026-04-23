@@ -70,12 +70,16 @@ export default function Inicio({ totalClientes, totalRutinas, usuarioActual, lis
         body: JSON.stringify({ dias_entrenamiento: diasString })
       });
       if (res.ok) {
+        await cargarDatos(); // Refrescamos la lista de clientes general
         setMostrarModalAgenda(false);
         setClienteEditando(null);
-        cargarDatos(); // Refrescamos la lista de clientes general
+        alert("¡Agenda guardada correctamente!");
+      } else {
+        alert("Hubo un error al guardar la agenda.");
       }
     } catch (e) {
       console.error(e);
+      alert("Error de conexión al guardar.");
     }
   };
 

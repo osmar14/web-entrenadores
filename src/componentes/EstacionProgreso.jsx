@@ -33,14 +33,17 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
       const headersSeguros = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 
       const resEjercicios = await fetch(`https://backend-entrenadores-production.up.railway.app/api/rutina-ejercicios/${rutina.id}`, { headers: headersSeguros });
-      const datosEjercicios = await resEjercicios.json();
+      const datosEjercicios = resEjercicios.ok ? await resEjercicios.json() : [];
 
       const resHistorial = await fetch(`https://backend-entrenadores-production.up.railway.app/api/progreso/${cliente.id}/${rutina.id}`, { headers: headersSeguros });
       const datosHistorial = resHistorial.ok ? await resHistorial.json() : [];
-      setHistorialCliente(datosHistorial);
+      setHistorialCliente(Array.isArray(datosHistorial) ? datosHistorial : []);
 
-      const ejerciciosConSeries = datosEjercicios.map((ej, idx) => {
-        const historialDelEjercicio = datosHistorial.filter(h => h.ejercicio_id === ej.ejercicio_id);
+      const ejerciciosValidos = Array.isArray(datosEjercicios) ? datosEjercicios : [];
+      const historialValido = Array.isArray(datosHistorial) ? datosHistorial : [];
+
+      const ejerciciosConSeries = ejerciciosValidos.map((ej, idx) => {
+        const historialDelEjercicio = historialValido.filter(h => h.ejercicio_id === ej.ejercicio_id);
         let fechaUltimaVez = null;
         let seriesUltimaVez = [];
 
@@ -82,6 +85,7 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
       setDiaHistorialActivo(diasUnicos[0] || '');
       setCargando(false);
     } catch (error) { 
+      console.error(error);
       mostrarAlerta("Error al cargar datos", "error"); 
       setCargando(false);
     }
