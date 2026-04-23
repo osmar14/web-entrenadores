@@ -157,17 +157,18 @@ export default function LienzoAnalitico({ esPro, setMostrarPaywall, cliente, usu
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart cx="50%" cy="50%" outerRadius="70%" data={datosRadarGeneral}>
-                  <PolarGrid stroke="#27272a" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#a1a1aa', fontSize: 12, fontWeight: 'bold' }} />
-                  <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={{ fill: '#52525b' }} />
+                  <PolarGrid gridType="polygon" stroke="#3f3f46" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#d4d4d8', fontSize: 11, fontWeight: 'bold' }} />
+                  <PolarRadiusAxis angle={90} domain={[0, 'auto']} tick={false} axisLine={false} />
                   <Tooltip content={<CustomTooltipRadar />} />
                   <Radar
                     name="Volumen"
                     dataKey="A"
-                    stroke="#10b981"
-                    fill="#10b981"
-                    fillOpacity={0.3}
-                    activeDot={{ r: 6, fill: '#34d399', stroke: '#fff', strokeWidth: 2, onClick: (e, payload) => cargarRadarDetalle(payload.payload.subject) }}
+                    stroke="#3b82f6"
+                    fill="#60a5fa"
+                    fillOpacity={0.4}
+                    dot={{ r: 4, fill: '#2563eb', strokeWidth: 2, stroke: '#fff' }}
+                    activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2, cursor: 'pointer', onClick: (e, payload) => cargarRadarDetalle(payload.payload.subject) }}
                   />
                 </RadarChart>
               </ResponsiveContainer>
