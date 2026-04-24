@@ -218,8 +218,10 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
   const getColorTipoSerie = (tipo) => {
     switch(tipo) {
       case 'Calentamiento': return 'text-orange-400 bg-orange-400/10 border-orange-400/30';
-      case 'Efectiva': return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30';
-      case 'Dropset': return 'text-purple-400 bg-purple-400/10 border-purple-400/30';
+      case 'Efectiva': 
+      case 'Normal': return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30';
+      case 'Dropset': 
+      case 'Drop Set': return 'text-purple-400 bg-purple-400/10 border-purple-400/30';
       default: return 'text-zinc-400 bg-zinc-800 border-zinc-700'; 
     }
   };
@@ -227,8 +229,10 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
   const getEstiloCajaHistorial = (tipo) => {
     switch(tipo) {
       case 'Calentamiento': return { bg: 'bg-orange-500/10 border-orange-500/30', badge: 'text-orange-400' };
-      case 'Efectiva': return { bg: 'bg-emerald-500/10 border-emerald-500/30', badge: 'text-emerald-400' };
-      case 'Dropset': return { bg: 'bg-purple-500/10 border-purple-500/30', badge: 'text-purple-400' };
+      case 'Efectiva': 
+      case 'Normal': return { bg: 'bg-emerald-500/10 border-emerald-500/30', badge: 'text-emerald-400' };
+      case 'Dropset': 
+      case 'Drop Set': return { bg: 'bg-purple-500/10 border-purple-500/30', badge: 'text-purple-400' };
       default: return { bg: 'bg-zinc-950 border-zinc-800', badge: 'text-zinc-500' }; 
     }
   };

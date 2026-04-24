@@ -111,8 +111,18 @@ export function ModalCoachboardLive({ modalLiveVisible, setModalLiveVisible, ses
               <p className="text-zinc-400 text-sm">Los datos aparecerán aquí cuando el cliente escriba en la app.</p>
             </div>
           ) : (
-            [...sessionLiveSeleccionada.updates].reverse().map((upd, idx) => (
-              <div key={idx} className={`p-4 rounded-xl border flex justify-between items-center transition-all ${upd.completado ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-zinc-900 border-zinc-700'}`}>
+            [...sessionLiveSeleccionada.updates].reverse().map((upd, idx) => {
+              const getEstiloLive = (tipo, completado) => {
+                if (!completado) return 'bg-zinc-900 border-zinc-700';
+                switch(tipo) {
+                  case 'Calentamiento': return 'bg-orange-500/10 border-orange-500/30';
+                  case 'Drop Set': 
+                  case 'Dropset': return 'bg-purple-500/10 border-purple-500/30';
+                  default: return 'bg-emerald-500/10 border-emerald-500/30';
+                }
+              };
+              return (
+              <div key={idx} className={`p-4 rounded-xl border flex justify-between items-center transition-all ${getEstiloLive(upd.tipo_serie, upd.completado)}`}>
                 <div>
                   <p className="text-sm font-black text-white mb-1">{upd.ejercicio}</p>
                   <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Set {upd.set}</p>
@@ -210,9 +220,10 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
                 ) : (
                   entrenamientosRecientes.map((ent, idx) => (
                     <div key={idx} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex justify-between items-center hover:border-zinc-700 transition">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-white mb-1">{ent.rutina_nombre || 'Rutina Eliminada'}</span>
-                        <span className="text-xs text-zinc-500">{new Date(ent.fecha).toLocaleDateString()} a las {new Date(ent.fecha).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                      <div className="flex flex-col flex-1">
+                        <span className="text-sm font-bold text-white mb-0.5">{ent.rutina_nombre || 'Rutina Eliminada'}</span>
+                        <p className="text-[10px] text-zinc-500 font-medium mb-1 line-clamp-1">{ent.ejercicios || 'Sin detalle de ejercicios'}</p>
+                        <span className="text-[9px] text-zinc-600 uppercase tracking-tighter">{new Date(ent.fecha).toLocaleDateString()} a las {new Date(ent.fecha).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                       </div>
                       <button onClick={() => { 
                         const rut = rutinasDelCliente.find(r => r.id === ent.rutina_id); 

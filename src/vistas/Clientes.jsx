@@ -108,10 +108,10 @@ export default function Clientes({
       const resVolumen = await fetch(`https://backend-entrenadores-production.up.railway.app/api/metricas/volumen/${cliente_id}`, { headers: headersSeguros });
       if(resVolumen.ok) setVolumenSemanal(await resVolumen.json());
 
-      const resFeedback = await fetch(`https://backend-entrenadores-production.up.railway.app/api/feedback-cliente/${cliente_id}`, { headers: headersSeguros });
+      const resFeedback = await fetch(`https://backend-entrenadores-production.up.railway.app/api/progreso/feedback/${cliente_id}`, { headers: headersSeguros });
       if(resFeedback.ok) setFeedbackCliente(await resFeedback.json());
 
-      const resRecientes = await fetch(`https://backend-entrenadores-production.up.railway.app/api/progreso-global/${cliente_id}`, { headers: headersSeguros });
+      const resRecientes = await fetch(`https://backend-entrenadores-production.up.railway.app/api/progreso/global/${cliente_id}`, { headers: headersSeguros });
       if(resRecientes.ok) setEntrenamientosRecientes(await resRecientes.json());
 
       const resFotos = await fetch(`https://backend-entrenadores-production.up.railway.app/api/fotos/${cliente_id}`, { headers: headersSeguros });
