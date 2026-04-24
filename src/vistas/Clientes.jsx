@@ -5,7 +5,7 @@ import { auth } from '../firebase';
 import { sendPasswordResetEmail } from 'firebase/auth'; 
 import { io } from 'socket.io-client';
 import jsPDF from 'jspdf';
-import { ModalNuevaNota, ModalAsignarPlantilla, ModalNuevoCliente, ModalCoachboardLive, ModalHistorialEntrenamientos } from '../componentes/ModalesClientes';
+import { ModalNuevaNota, ModalAsignarPlantilla, ModalNuevoCliente, ModalCoachboardLive, ModalCentroRendimiento } from '../componentes/ModalesClientes';
 
 export default function Clientes({ 
   planActual, listaClientes, clienteSeleccionado, setClienteSeleccionado, 
