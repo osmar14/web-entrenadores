@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Sidebar({ vistaActiva, setVistaActiva, setClienteSeleccionado, onSignOut }) {
+export default function Sidebar({ vistaActiva, setVistaActiva, setClienteSeleccionado, onSignOut, setMostrarCalculadora }) {
   return (
     <aside className="hidden md:flex w-64 bg-zinc-900/50 border-r border-zinc-800 flex-col p-6 backdrop-blur-xl shrink-0 z-10">
       <div className="mb-10 flex items-center gap-3">
@@ -22,6 +22,12 @@ export default function Sidebar({ vistaActiva, setVistaActiva, setClienteSelecci
         </button>
         <button onClick={() => { setVistaActiva('planes'); setClienteSeleccionado(null); }} className={`flex items-center gap-3 p-3 rounded-xl transition ${vistaActiva === 'planes' ? 'bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20' : 'text-zinc-400 font-semibold hover:bg-zinc-800'}`}>
           <span className="text-xl">👑</span> Suscripción
+        </button>
+        
+        <div className="my-2 border-t border-zinc-800"></div>
+
+        <button onClick={() => setMostrarCalculadora(true)} className="flex items-center gap-3 p-3 rounded-xl transition text-zinc-400 font-semibold hover:bg-zinc-800">
+          <span className="text-xl">🧮</span> Calculadora 1RM
         </button>
       </nav>
 

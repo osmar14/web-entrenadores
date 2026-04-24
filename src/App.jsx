@@ -10,6 +10,7 @@ import { auth } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { ModalConfirmacion, ModalNuevaRutina, ModalClonarMasivo, ModalCatalogo } from './componentes/ModalesApp';
 import { BottomTabBar } from './componentes/BottomTabBar';
+import CalculadoraRM from './componentes/CalculadoraRM';
 
 function App() {
   // 👑 ESTADOS DEL PLAN PRO Y MURO DE CRISTAL
@@ -40,6 +41,7 @@ function App() {
   const [clientesSeleccionados, setClientesSeleccionados] = useState([]);
   const [mostrarModalCatalogo, setMostrarModalCatalogo] = useState(false);
   const [nuevoEjercicioCatalogo, setNuevoEjercicioCatalogo] = useState({nombre: '', grupo_muscular: 'Pecho', tipo_metrica: 'reps'});
+  const [mostrarCalculadora, setMostrarCalculadora] = useState(false);
 
   const [mostrarModal, setMostrarModal] = useState(false);
   const [pasoModal, setPasoModal] = useState('formulario');
@@ -335,6 +337,7 @@ function App() {
         setVistaActiva={setVistaActiva} 
         setClienteSeleccionado={setClienteSeleccionado} 
         onSignOut={() => signOut(auth)} 
+        setMostrarCalculadora={setMostrarCalculadora}
       />
 
       <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 w-full relative pb-28 md:pb-8">
@@ -435,6 +438,8 @@ function App() {
         nuevoEjercicioCatalogo={nuevoEjercicioCatalogo} setNuevoEjercicioCatalogo={setNuevoEjercicioCatalogo} 
         handleCrearEjercicio={handleCrearEjercicio} catalogoEjercicios={catalogoEjercicios} handleEliminarEjercicio={handleEliminarEjercicio} 
       />
+
+      {mostrarCalculadora && <CalculadoraRM onClose={() => setMostrarCalculadora(false)} />}
     </div>
   )
 }
