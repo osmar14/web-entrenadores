@@ -11,7 +11,7 @@ export default function Clientes({
   planActual, listaClientes, clienteSeleccionado, setClienteSeleccionado, 
   listaRutinas, todasLasRutinas, handleClonarRutina,
   abrirConstructor, handleEliminarRutina, cargarDatos, mostrarAlerta,
-  usuarioActual, esPro, setMostrarPaywall 
+  usuarioActual, esPro, setMostrarPaywall, catalogoEjercicios 
 }) {
   const [mostrarModalAsignar, setMostrarModalAsignar] = useState(false);
   const [mostrarModalCliente, setMostrarModalCliente] = useState(false);
@@ -403,7 +403,7 @@ export default function Clientes({
              planDeEntrenamientoJSX={
                <div className="flex flex-col gap-4">
                  <button onClick={() => setMostrarModalHistorial(true)} className="bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white py-3 rounded-2xl font-bold transition flex items-center justify-center gap-2 text-sm shadow-lg hover:border-blue-500/50 hover:bg-zinc-800">
-                    <span>⏱️</span> Ver Historial de Entrenamientos
+                    <span>🏆</span> Centro de Rendimiento
                  </button>
                  {rutinasDelCliente.map(rutina => (
                    <div key={rutina.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex flex-col shadow-lg animate-in zoom-in duration-300 hover:border-emerald-500/50 transition-all">
@@ -451,10 +451,11 @@ export default function Clientes({
         sessionLiveSeleccionada={sessionLiveSeleccionada} 
       />
 
-      <ModalHistorialEntrenamientos 
+      <ModalCentroRendimiento 
         mostrarModalHistorial={mostrarModalHistorial} setMostrarModalHistorial={setMostrarModalHistorial} 
         entrenamientosRecientes={entrenamientosRecientes} rutinasDelCliente={rutinasDelCliente} 
         abrirParaAnalizar={abrirParaAnalizar} mostrarAlerta={mostrarAlerta} 
+        cliente={clienteSeleccionado} usuarioActual={usuarioActual} catalogoEjercicios={catalogoEjercicios}
       />
     </>
   );

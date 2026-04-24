@@ -20,14 +20,14 @@ export default function Sidebar({ vistaActiva, setVistaActiva, setClienteSelecci
         <button onClick={() => { setVistaActiva('rutinas'); setClienteSeleccionado(null); }} className={`flex items-center gap-3 p-3 rounded-xl transition ${(vistaActiva === 'rutinas' || vistaActiva === 'constructor') ? 'bg-blue-500/10 text-blue-400 font-bold border border-blue-500/20' : 'text-zinc-400 font-semibold hover:bg-zinc-800'}`}>
           <span className="text-xl">📋</span> Rutinas
         </button>
-        <button onClick={() => { setVistaActiva('planes'); setClienteSeleccionado(null); }} className={`flex items-center gap-3 p-3 rounded-xl transition ${vistaActiva === 'planes' ? 'bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20' : 'text-zinc-400 font-semibold hover:bg-zinc-800'}`}>
-          <span className="text-xl">👑</span> Suscripción
+        <button onClick={() => setMostrarCalculadora(true)} className="flex items-center gap-3 p-3 rounded-xl transition text-zinc-400 font-semibold hover:bg-zinc-800">
+          <span className="text-xl">🧮</span> Calculadora 1RM
         </button>
         
         <div className="my-2 border-t border-zinc-800"></div>
 
-        <button onClick={() => setMostrarCalculadora(true)} className="flex items-center gap-3 p-3 rounded-xl transition text-zinc-400 font-semibold hover:bg-zinc-800">
-          <span className="text-xl">🧮</span> Calculadora 1RM
+        <button onClick={() => { setVistaActiva('planes'); setClienteSeleccionado(null); }} className={`flex items-center gap-3 p-3 rounded-xl transition ${vistaActiva === 'planes' ? 'bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20' : 'text-zinc-400 font-semibold hover:bg-zinc-800'}`}>
+          <span className="text-xl">👑</span> Suscripción
         </button>
       </nav>
 

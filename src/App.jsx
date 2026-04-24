@@ -350,7 +350,7 @@ function App() {
         
         {vistaActiva === 'planes' && <Planes planActual={planEntrenador} actualizarPlanLocal={setPlanEntrenador} usuarioActual={usuarioActual} mostrarAlerta={mostrarAlerta} />}
 
-        {vistaActiva === 'clientes' && <Clientes planActual={planEntrenador} listaClientes={listaClientes} clienteSeleccionado={clienteSeleccionado} setClienteSeleccionado={setClienteSeleccionado} listaRutinas={listaRutinas} todasLasRutinas={todasLasRutinas} handleClonarRutina={handleClonarRutina} abrirConstructor={abrirConstructor} handleEliminarRutina={handleEliminarRutina} cargarDatos={cargarDatos} mostrarAlerta={mostrarAlerta} usuarioActual={usuarioActual} esPro={esPro} setMostrarPaywall={setMostrarPaywall} />}
+        {vistaActiva === 'clientes' && <Clientes planActual={planEntrenador} listaClientes={listaClientes} clienteSeleccionado={clienteSeleccionado} setClienteSeleccionado={setClienteSeleccionado} listaRutinas={listaRutinas} todasLasRutinas={todasLasRutinas} handleClonarRutina={handleClonarRutina} abrirConstructor={abrirConstructor} handleEliminarRutina={handleEliminarRutina} cargarDatos={cargarDatos} mostrarAlerta={mostrarAlerta} usuarioActual={usuarioActual} esPro={esPro} setMostrarPaywall={setMostrarPaywall} catalogoEjercicios={catalogoEjercicios} />}
 
         {vistaActiva === 'rutinas' && (
           <div className="mt-4 md:mt-8 animate-in fade-in duration-500">

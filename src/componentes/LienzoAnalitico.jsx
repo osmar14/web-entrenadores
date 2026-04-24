@@ -241,68 +241,6 @@ export default function LienzoAnalitico({ esPro, setMostrarPaywall, cliente, usu
         </div>
       )}
 
-      {/* SECCIÓN 2: COMPARADOR PRO (PAYWALL) */}
-      <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-4 md:p-6 relative overflow-hidden">
-        {!esPro && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-sm">
-            <div className="bg-zinc-900 border border-amber-500/30 p-6 rounded-2xl shadow-2xl text-center max-w-sm cursor-pointer transform hover:scale-105 transition" onClick={() => setMostrarPaywall(true)}>
-              <span className="text-4xl mb-3 block drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]">👑</span>
-              <h3 className="text-lg font-black text-white mb-2">Comparador de Evolución</h3>
-              <p className="text-zinc-400 text-xs mb-4">Compara el rendimiento de diferentes meses para validar tu metodología con datos duros.</p>
-              <button className="bg-gradient-to-r from-amber-500 to-yellow-400 text-zinc-950 px-6 py-2 rounded-xl font-black text-sm">Desbloquear Pro</button>
-            </div>
-          </div>
-        )}
-
-        <div className={`transition-all duration-500 ${!esPro ? 'opacity-20 pointer-events-none select-none blur-sm' : ''}`}>
-          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-6">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">⚖️</span>
-              <div>
-                <h2 className="text-xl font-black text-white">Generador de Comparativas</h2>
-                <p className="text-sm text-zinc-400">Compara el volumen mensual por zona muscular.</p>
-              </div>
-            </div>
-
-            {/* Controles de Comparación */}
-            <div className="flex flex-wrap gap-3 bg-zinc-950 p-2 rounded-xl border border-zinc-800">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500 font-bold uppercase">Mes A:</span>
-                <input type="month" value={mes1} onChange={(e) => setMes1(e.target.value)} className="bg-zinc-900 text-white text-sm px-2 py-1 rounded outline-none border border-zinc-700" />
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500 font-bold uppercase">Mes B:</span>
-                <input type="month" value={mes2} onChange={(e) => setMes2(e.target.value)} className="bg-zinc-900 text-white text-sm px-2 py-1 rounded outline-none border border-zinc-700" />
-              </div>
-              <button onClick={cargarComparativa} disabled={cargandoComparativa} className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm px-4 py-1.5 rounded-lg shadow-lg transition">
-                {cargandoComparativa ? '...' : 'Comparar'}
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 h-72">
-            {datosComparativa.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center opacity-50">
-                <span className="text-3xl mb-2">📊</span>
-                <p className="text-sm font-bold text-zinc-400">Selecciona dos meses y presiona Comparar</p>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={datosComparativa} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                  <XAxis dataKey="grupo_muscular" stroke="#a1a1aa" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip content={<CustomTooltipBar />} cursor={{ fill: '#27272a', opacity: 0.4 }} />
-                  <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', color: '#a1a1aa' }} />
-                  <Bar name={`Mes ${mes1}`} dataKey="series_mes1" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                  <Bar name={`Mes ${mes2}`} dataKey="series_mes2" fill="#10b981" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-      </div>
-      
     </div>
   );
 }
