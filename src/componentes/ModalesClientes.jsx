@@ -14,7 +14,7 @@ export function ModalNuevaNota({ mostrarModalNota, setMostrarModalNota, nuevaNot
         <div className="space-y-5">
           <div>
             <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Categoría</label>
-            <select value={nuevaNota.categoria} onChange={(e) => setNuevaNota({...nuevaNota, categoria: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition cursor-pointer">
+            <select value={nuevaNota.categoria} onChange={(e) => setNuevaNota({ ...nuevaNota, categoria: e.target.value })} className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition cursor-pointer">
               <option value="General">📝 Nota General</option>
               <option value="Lesión">🚨 Lesión / Dolor Agudo</option>
               <option value="Salud">🩺 Salud / Movilidad</option>
@@ -24,7 +24,7 @@ export function ModalNuevaNota({ mostrarModalNota, setMostrarModalNota, nuevaNot
           </div>
           <div>
             <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Mensaje / Detalle</label>
-            <textarea value={nuevaNota.mensaje} onChange={(e) => setNuevaNota({...nuevaNota, mensaje: e.target.value})} placeholder="Ej. Siente molestia en el hombro..." className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition placeholder-zinc-700 min-h-[120px] resize-none" />
+            <textarea value={nuevaNota.mensaje} onChange={(e) => setNuevaNota({ ...nuevaNota, mensaje: e.target.value })} placeholder="Ej. Siente molestia en el hombro..." className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition placeholder-zinc-700 min-h-[120px] resize-none" />
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-8">
@@ -68,9 +68,9 @@ export function ModalNuevoCliente({ mostrarModalCliente, setMostrarModalCliente,
           <button onClick={() => setMostrarModalCliente(false)} className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-400 hover:text-white">✕</button>
         </div>
         <div className="space-y-4">
-          <input type="text" value={nuevoCliente.nombre} onChange={(e) => setNuevoCliente({...nuevoCliente, nombre: e.target.value})} placeholder="Nombre completo" className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:border-emerald-500 outline-none" />
-          <input type="email" value={nuevoCliente.email} onChange={(e) => setNuevoCliente({...nuevoCliente, email: e.target.value.trim()})} placeholder="Correo electrónico (Acceso a la App)" className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:border-emerald-500 outline-none" />
-          <input type="text" value={nuevoCliente.objetivo} onChange={(e) => setNuevoCliente({...nuevoCliente, objetivo: e.target.value})} placeholder="Objetivo (Ej. Hipertrofia)" className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:border-emerald-500 outline-none" />
+          <input type="text" value={nuevoCliente.nombre} onChange={(e) => setNuevoCliente({ ...nuevoCliente, nombre: e.target.value })} placeholder="Nombre completo" className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:border-emerald-500 outline-none" />
+          <input type="email" value={nuevoCliente.email} onChange={(e) => setNuevoCliente({ ...nuevoCliente, email: e.target.value.trim() })} placeholder="Correo electrónico (Acceso a la App)" className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:border-emerald-500 outline-none" />
+          <input type="text" value={nuevoCliente.objetivo} onChange={(e) => setNuevoCliente({ ...nuevoCliente, objetivo: e.target.value })} placeholder="Objetivo (Ej. Hipertrofia)" className="w-full bg-zinc-950 border border-zinc-800 text-white rounded-xl px-4 py-3 focus:border-emerald-500 outline-none" />
         </div>
         <div className="flex justify-end gap-3 mt-8">
           <button onClick={() => setMostrarModalCliente(false)} className="text-zinc-400 font-bold hover:text-white px-4 py-2">Cancelar</button>
@@ -114,34 +114,35 @@ export function ModalCoachboardLive({ modalLiveVisible, setModalLiveVisible, ses
             [...sessionLiveSeleccionada.updates].reverse().map((upd, idx) => {
               const getEstiloLive = (tipo, completado) => {
                 if (!completado) return 'bg-zinc-900 border-zinc-700';
-                switch(tipo) {
+                switch (tipo) {
                   case 'Calentamiento': return 'bg-orange-500/10 border-orange-500/30';
-                  case 'Drop Set': 
+                  case 'Drop Set':
                   case 'Dropset': return 'bg-purple-500/10 border-purple-500/30';
                   default: return 'bg-emerald-500/10 border-emerald-500/30';
                 }
               };
               return (
-              <div key={idx} className={`p-4 rounded-xl border flex justify-between items-center transition-all ${getEstiloLive(upd.tipo_serie, upd.completado)}`}>
-                <div>
-                  <p className="text-sm font-black text-white mb-1">{upd.ejercicio}</p>
-                  <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Set {upd.set}</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="text-[10px] text-zinc-500 uppercase font-black">Peso</p>
-                    <p className="text-blue-400 font-bold">{upd.peso ? `${upd.peso} kg` : '--'}</p>
+                <div key={idx} className={`p-4 rounded-xl border flex justify-between items-center transition-all ${getEstiloLive(upd.tipo_serie, upd.completado)}`}>
+                  <div>
+                    <p className="text-sm font-black text-white mb-1">{upd.ejercicio}</p>
+                    <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Set {upd.set}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-zinc-500 uppercase font-black">Reps</p>
-                    <p className="text-emerald-400 font-bold">{upd.reps ? upd.reps : '--'}</p>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-[10px] text-zinc-500 uppercase font-black">Peso</p>
+                      <p className="text-blue-400 font-bold">{upd.peso ? `${upd.peso} kg` : '--'}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-zinc-500 uppercase font-black">Reps</p>
+                      <p className="text-emerald-400 font-bold">{upd.reps ? upd.reps : '--'}</p>
+                    </div>
+                    {upd.completado && (
+                      <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/50">✓</div>
+                    )}
                   </div>
-                  {upd.completado && (
-                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/50">✓</div>
-                  )}
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
@@ -185,9 +186,9 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
         <div className="bg-zinc-900 border border-zinc-700 p-3 rounded-xl shadow-xl z-50">
           <p className="text-zinc-400 text-xs font-bold uppercase mb-2">{label}</p>
           {payload.map((p, idx) => (
-             <p key={idx} className="font-black text-sm" style={{ color: p.color }}>
-               {p.name}: {p.value} <span className="font-normal text-zinc-500">series</span>
-             </p>
+            <p key={idx} className="font-black text-sm" style={{ color: p.color }}>
+              {p.name}: {p.value} <span className="font-normal text-zinc-500">series</span>
+            </p>
           ))}
         </div>
       );
@@ -205,12 +206,12 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
           </h2>
           <button onClick={() => setMostrarModalHistorial(false)} className="w-10 h-10 rounded-full bg-zinc-800 text-zinc-400 hover:text-white transition text-lg flex items-center justify-center">✕</button>
         </div>
-        
+
         <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
-          
+
           {/* COLUMNA IZQUIERDA: Historial y Comparativas */}
           <div className="lg:w-2/3 flex flex-col gap-6 h-full">
-            
+
             {/* HISTORIAL TOP */}
             <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 shadow-inner shrink-0 max-h-64 overflow-y-auto custom-scrollbar">
               <h3 className="text-lg font-black text-white mb-4">⏱️ Historial de Sesiones</h3>
@@ -223,12 +224,12 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
                       <div className="flex flex-col flex-1">
                         <span className="text-sm font-bold text-white mb-0.5">{ent.rutina_nombre || 'Rutina Eliminada'}</span>
                         <p className="text-[10px] text-zinc-500 font-medium mb-1 line-clamp-1">{ent.ejercicios || 'Sin detalle de ejercicios'}</p>
-                        <span className="text-[9px] text-zinc-600 uppercase tracking-tighter">{new Date(ent.fecha).toLocaleDateString()} a las {new Date(ent.fecha).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        <span className="text-[9px] text-zinc-600 uppercase tracking-tighter">{new Date(ent.fecha).toLocaleDateString()} a las {new Date(ent.fecha).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
-                      <button onClick={() => { 
-                        const rut = rutinasDelCliente.find(r => r.id === ent.rutina_id); 
-                        if (rut) { setMostrarModalHistorial(false); abrirParaAnalizar(rut); } 
-                        else mostrarAlerta('Rutina no encontrada', 'error'); 
+                      <button onClick={() => {
+                        const rut = rutinasDelCliente.find(r => r.id === ent.rutina_id);
+                        if (rut) { setMostrarModalHistorial(false); abrirParaAnalizar(rut); }
+                        else mostrarAlerta('Rutina no encontrada', 'error');
                       }} className="text-blue-400 text-xs font-bold bg-blue-500/10 px-4 py-2 rounded-lg hover:bg-blue-500/20 transition border border-blue-500/20">Ver Detalle</button>
                     </div>
                   ))
@@ -238,47 +239,47 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
 
             {/* COMPARADOR BOTTOM */}
             <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 shadow-inner flex-1 flex flex-col min-h-0">
-               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
-                 <div>
-                   <h3 className="text-lg font-black text-white">⚖️ Generador de Comparativas</h3>
-                   <p className="text-xs text-zinc-500">Compara el volumen mensual por zona muscular.</p>
-                 </div>
-                 <div className="flex flex-wrap gap-2 bg-zinc-900 p-2 rounded-xl border border-zinc-800">
-                    <input type="month" value={mes1} onChange={(e) => setMes1(e.target.value)} className="bg-zinc-950 text-white text-xs px-2 py-1.5 rounded outline-none border border-zinc-700" />
-                    <input type="month" value={mes2} onChange={(e) => setMes2(e.target.value)} className="bg-zinc-950 text-white text-xs px-2 py-1.5 rounded outline-none border border-zinc-700" />
-                    <button onClick={cargarComparativa} disabled={cargandoComparativa} className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-1.5 rounded-lg transition">
-                      {cargandoComparativa ? '...' : 'Comparar'}
-                    </button>
-                 </div>
-               </div>
-               
-               <div className="flex-1 min-h-[200px]">
-                 {datosComparativa.length === 0 ? (
-                   <div className="h-full flex flex-col items-center justify-center opacity-50">
-                     <span className="text-3xl mb-2">📊</span>
-                     <p className="text-xs font-bold text-zinc-400">Presiona Comparar para cargar datos</p>
-                   </div>
-                 ) : (
-                   <ResponsiveContainer width="100%" height="100%">
-                     <BarChart data={datosComparativa} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                       <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                       <XAxis dataKey="grupo_muscular" stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
-                       <YAxis stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} />
-                       <Tooltip content={<CustomTooltipBar />} cursor={{ fill: '#27272a', opacity: 0.4 }} />
-                       <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#a1a1aa' }} />
-                       <Bar name={`Mes ${mes1}`} dataKey="series_mes1" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                       <Bar name={`Mes ${mes2}`} dataKey="series_mes2" fill="#10b981" radius={[4, 4, 0, 0]} />
-                     </BarChart>
-                   </ResponsiveContainer>
-                 )}
-               </div>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+                <div>
+                  <h3 className="text-lg font-black text-white">⚖️ Generador de Comparativas</h3>
+                  <p className="text-xs text-zinc-500">Compara el volumen mensual por zona muscular.</p>
+                </div>
+                <div className="flex flex-wrap gap-2 bg-zinc-900 p-2 rounded-xl border border-zinc-800">
+                  <input type="month" value={mes1} onChange={(e) => setMes1(e.target.value)} className="bg-zinc-950 text-white text-xs px-2 py-1.5 rounded outline-none border border-zinc-700" />
+                  <input type="month" value={mes2} onChange={(e) => setMes2(e.target.value)} className="bg-zinc-950 text-white text-xs px-2 py-1.5 rounded outline-none border border-zinc-700" />
+                  <button onClick={cargarComparativa} disabled={cargandoComparativa} className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-1.5 rounded-lg transition">
+                    {cargandoComparativa ? '...' : 'Comparar'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 min-h-[200px]">
+                {datosComparativa.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center opacity-50">
+                    <span className="text-3xl mb-2">📊</span>
+                    <p className="text-xs font-bold text-zinc-400">Presiona Comparar para cargar datos</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={datosComparativa} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                      <XAxis dataKey="grupo_muscular" stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} />
+                      <Tooltip content={<CustomTooltipBar />} cursor={{ fill: '#27272a', opacity: 0.4 }} />
+                      <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#a1a1aa' }} />
+                      <Bar name={`Mes ${mes1}`} dataKey="series_mes1" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      <Bar name={`Mes ${mes2}`} dataKey="series_mes2" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
             </div>
 
           </div>
 
           {/* COLUMNA DERECHA: CALCULADORA FUNCIONAL */}
           <div className="lg:w-1/3 h-full">
-            <CalculadoraFuncional 
+            <CalculadoraFuncional
               cliente={cliente}
               usuarioActual={usuarioActual}
               catalogoEjercicios={catalogoEjercicios}
