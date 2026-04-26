@@ -108,10 +108,10 @@ export function ModalCalculadora({ mostrarModalCalculadora, setMostrarModalCalcu
                   {prActual > 0 && (
                     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mt-4">
                       <p className="text-[10px] font-bold text-zinc-400 uppercase mb-3">🎯 Zonas de Entrenamiento (Porcentajes de {prActual}kg)</p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {[100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50].map(perc => (
-                          <div key={perc} className="bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 flex justify-between items-center hover:border-blue-500/50 transition">
-                            <span className="text-xs font-bold text-zinc-500">{perc}%</span>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        {[100, 90, 80, 70, 60, 50, 40, 30, 20, 10].map(perc => (
+                          <div key={perc} className="bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 flex flex-col items-center justify-center hover:border-blue-500/50 transition">
+                            <span className="text-xs font-bold text-zinc-500 mb-1">{perc}%</span>
                             <span className="text-sm font-black text-white">{(prActual * (perc / 100)).toFixed(1)} kg</span>
                           </div>
                         ))}

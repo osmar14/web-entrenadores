@@ -34,10 +34,11 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
           const resMes = await fetch(`https://backend-entrenadores-production.up.railway.app/api/progreso/historial-mes/${cliente.id}`, { headers });
           if (resMes.ok) {
             const data = await resMes.json();
-            setHistorialMes(data);
+            const dataParseada = data.map(d => ({...d, dia_nombre: d.dia_nombre || 'Historial General'}));
+            setHistorialMes(dataParseada);
             
             // Extraer días únicos que tengan nombre (ej. "Día 1", "Brazo")
-            const diasUnicos = [...new Set(data.map(d => d.dia_nombre).filter(Boolean))];
+            const diasUnicos = [...new Set(dataParseada.map(d => d.dia_nombre).filter(Boolean))];
             setDiasDisponibles(diasUnicos);
             if (diasUnicos.length > 0) setDiaSeleccionado(diasUnicos[0]);
           }
@@ -86,14 +87,18 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
   // Generar grid de adherencia (últimos 90 días)
   const generarGridAdherencia = () => {
     if (!datosAdherencia) return [];
-    const fechasSet = new Set(datosAdherencia.fechas_activas);
+    const fechasMap = {};
+    if (Array.isArray(datosAdherencia.fechas_activas)) {
+      datosAdherencia.fechas_activas.forEach(f => { fechasMap[f.fecha || f] = f.estado || 'completo'; });
+    }
     const grid = [];
     const hoy = new Date();
     for (let i = 89; i >= 0; i--) {
       const d = new Date(hoy);
       d.setDate(d.getDate() - i);
       const key = d.toISOString().split('T')[0];
-      grid.push({ fecha: key, activo: fechasSet.has(key) });
+      const estado = fechasMap[key];
+      grid.push({ fecha: key, estado: estado || 'missed' });
     }
     return grid;
   };
@@ -161,7 +166,11 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
                       <div className="grid gap-1" style={{ gridTemplateColumns: 'repeat(13, 1fr)' }}>
                         {generarGridAdherencia().map((d, i) => (
                           <div key={i} title={d.fecha}
-                            className={`aspect-square rounded-sm transition-colors ${d.activo ? 'bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]' : 'bg-zinc-800'}`} />
+                            className={`aspect-square rounded-sm transition-colors ${
+                                d.estado === 'completo' ? 'bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]' :
+                                d.estado === 'incompleto' ? 'bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)]' :
+                                'bg-red-900/30 border border-red-900/50'
+                            }`} />
                         ))}
                       </div>
                     </div>
