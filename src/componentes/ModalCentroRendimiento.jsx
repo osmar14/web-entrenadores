@@ -38,7 +38,23 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
             setHistorialMes(dataParseada);
             
             // Extraer días únicos que tengan nombre (ej. "Día 1", "Brazo")
-            const diasUnicos = [...new Set(dataParseada.map(d => d.dia_nombre).filter(Boolean))];
+            let diasUnicos = [...new Set(dataParseada.map(d => d.dia_nombre).filter(Boolean))];
+            
+            // Intentar obtener los días reales de la rutina activa
+            if (rutinasDelCliente && rutinasDelCliente.length > 0) {
+                try {
+                    const rutinaActivaId = rutinasDelCliente[0].id;
+                    const resRutina = await fetch(`https://backend-entrenadores-production.up.railway.app/api/rutina-ejercicios/${rutinaActivaId}`, { headers });
+                    if (resRutina.ok) {
+                        const ejerciciosRutina = await resRutina.json();
+                        const diasRutina = [...new Set(ejerciciosRutina.map(e => e.dia_nombre).filter(Boolean))];
+                        if (diasRutina.length > 0) {
+                            diasUnicos = diasRutina;
+                        }
+                    }
+                } catch(e) {}
+            }
+            
             setDiasDisponibles(diasUnicos);
             if (diasUnicos.length > 0) setDiaSeleccionado(diasUnicos[0]);
           }
@@ -86,21 +102,8 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
 
   // Generar grid de adherencia (últimos 90 días)
   const generarGridAdherencia = () => {
-    if (!datosAdherencia) return [];
-    const fechasMap = {};
-    if (Array.isArray(datosAdherencia.fechas_activas)) {
-      datosAdherencia.fechas_activas.forEach(f => { fechasMap[f.fecha || f] = f.estado || 'completo'; });
-    }
-    const grid = [];
-    const hoy = new Date();
-    for (let i = 89; i >= 0; i--) {
-      const d = new Date(hoy);
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().split('T')[0];
-      const estado = fechasMap[key];
-      grid.push({ fecha: key, estado: estado || 'missed' });
-    }
-    return grid;
+    if (!datosAdherencia || !datosAdherencia.fechas_activas) return [];
+    return datosAdherencia.fechas_activas;
   };
 
   const getColorSerie = (tipo) => {
@@ -118,19 +121,21 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
     // Filtrar por dia
     const historialDia = historialMes.filter(h => h.dia_nombre === diaSeleccionado);
     
-    // Agrupar por fecha
-    const porFecha = {};
+    // Agrupar por fecha + rutina_id (para no mezclar si hizo 2 rutinas distintas el mismo día)
+    const porSesion = {};
     historialDia.forEach(r => {
-      if (!porFecha[r.dia_entrenamiento]) porFecha[r.dia_entrenamiento] = {};
+      const sesionKey = `${r.dia_entrenamiento}_${r.rutina_id}`;
+      if (!porSesion[sesionKey]) porSesion[sesionKey] = { fecha: r.dia_entrenamiento, rutina_nombre: r.rutina_nombre, ejercicios: {} };
+      
       const ej = r.ejercicio_nombre || 'Ejercicio';
-      if (!porFecha[r.dia_entrenamiento][ej]) porFecha[r.dia_entrenamiento][ej] = [];
-      porFecha[r.dia_entrenamiento][ej].push(r);
+      if (!porSesion[sesionKey].ejercicios[ej]) porSesion[sesionKey].ejercicios[ej] = [];
+      porSesion[sesionKey].ejercicios[ej].push(r);
     });
 
-    // Ordenar fechas descendente y tomar las últimas 4
-    const fechasOrdenadas = Object.keys(porFecha).sort((a, b) => new Date(b) - new Date(a)).slice(0, 4);
+    // Ordenar descendente y tomar las últimas 4
+    const sesionesOrdenadas = Object.values(porSesion).sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 4);
     
-    return fechasOrdenadas.map(f => ({ fecha: f, ejercicios: porFecha[f] }));
+    return sesionesOrdenadas;
   };
 
   if (!mostrarModalHistorial) return null;
@@ -165,13 +170,24 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
                     <div className="flex-1">
                       <div className="grid gap-1" style={{ gridTemplateColumns: 'repeat(13, 1fr)' }}>
                         {generarGridAdherencia().map((d, i) => (
-                          <div key={i} title={d.fecha}
+                          <div key={i} title={`${d.fecha} - ${d.estado}`}
                             className={`aspect-square rounded-sm transition-colors ${
                                 d.estado === 'completo' ? 'bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]' :
                                 d.estado === 'incompleto' ? 'bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)]' :
-                                'bg-red-900/30 border border-red-900/50'
+                                d.estado === 'missed' ? 'bg-red-900/50 border border-red-900/80 shadow-[0_0_4px_rgba(220,38,38,0.3)]' :
+                                'bg-zinc-800/50 border border-zinc-700/50'
                             }`} />
                         ))}
+                      </div>
+                      
+                      {/* LEYENDA */}
+                      <div className="flex items-center justify-end gap-3 text-[10px] font-bold text-zinc-400 uppercase mt-2">
+                        <span>Menos</span>
+                        <div className="w-3 h-3 bg-zinc-800/50 border border-zinc-700/50 rounded-sm" title="Descanso"></div>
+                        <div className="w-3 h-3 bg-red-900/50 border border-red-900/80 rounded-sm" title="Falta (Missed)"></div>
+                        <div className="w-3 h-3 bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)] rounded-sm" title="Incompleto"></div>
+                        <div className="w-3 h-3 bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)] rounded-sm" title="Completo"></div>
+                        <span>Más</span>
                       </div>
                     </div>
                   </div>
@@ -204,9 +220,14 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
                    getEntrenamientosDia().map((entrenamiento, idx) => (
                      <div key={idx} className="bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg relative">
                         {idx === 0 && <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl z-10">MÁS RECIENTE</div>}
-                        <div className="bg-zinc-900 px-5 py-4 border-b border-zinc-800 flex items-center gap-3">
-                          <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-zinc-600'}`}></div>
-                          <span className="font-black text-white text-lg">{new Date(entrenamiento.fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' }).toUpperCase()}</span>
+                        <div className="bg-zinc-900 px-5 py-4 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-zinc-600'}`}></div>
+                            <span className="font-black text-white text-lg">{new Date(entrenamiento.fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' }).toUpperCase()}</span>
+                          </div>
+                          {entrenamiento.rutina_nombre && (
+                              <span className="text-[10px] text-zinc-400 font-bold bg-zinc-800 px-2 py-1 rounded-md">{entrenamiento.rutina_nombre}</span>
+                          )}
                         </div>
                         <div className="p-5 space-y-4">
                           {Object.entries(entrenamiento.ejercicios).map(([nombreEj, series]) => (
