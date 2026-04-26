@@ -222,9 +222,19 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
                   entrenamientosRecientes.map((ent, idx) => (
                     <div key={idx} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex justify-between items-center hover:border-zinc-700 transition">
                       <div className="flex flex-col flex-1">
-                        <span className="text-sm font-bold text-white mb-0.5">{ent.rutina_nombre || 'Rutina Eliminada'}</span>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-sm font-bold text-white">{ent.rutina_nombre || 'Rutina Eliminada'}</span>
+                          {/* Etiqueta que muestra si fue Día de Brazo, Pierna, etc. */}
+                          <span className="bg-blue-500/10 text-blue-400 border border-blue-500/30 text-[9px] uppercase font-black px-2 py-0.5 rounded-md">
+                            {ent.dia_nombre || 'General'}
+                          </span>
+                        </div>
                         <p className="text-[10px] text-zinc-500 font-medium mb-1 line-clamp-1">{ent.ejercicios || 'Sin detalle de ejercicios'}</p>
-                        <span className="text-[9px] text-zinc-600 uppercase tracking-tighter">{new Date(ent.fecha).toLocaleDateString()} a las {new Date(ent.fecha).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="text-[9px] text-zinc-600 uppercase tracking-tighter">
+                          {new Date(ent.dia_entrenamiento || ent.fecha).toLocaleDateString()}
+                          {/* Usamos dia_entrenamiento que viene del nuevo backend */}
+                          {new Date(ent.dia_entrenamiento || ent.fecha).toLocaleDateString()}
+                        </span>
                       </div>
                       <button onClick={() => {
                         const rut = rutinasDelCliente.find(r => r.id === ent.rutina_id);
