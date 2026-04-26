@@ -231,9 +231,7 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
                         </div>
                         <p className="text-[10px] text-zinc-500 font-medium mb-1 line-clamp-1">{ent.ejercicios || 'Sin detalle de ejercicios'}</p>
                         <span className="text-[9px] text-zinc-600 uppercase tracking-tighter">
-                          {new Date(ent.dia_entrenamiento || ent.fecha).toLocaleDateString()}
-                          {/* Usamos dia_entrenamiento que viene del nuevo backend */}
-                          {new Date(ent.dia_entrenamiento || ent.fecha).toLocaleDateString()}
+                          {new Date(ent.dia_entrenamiento || ent.fecha).toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric' })}
                         </span>
                       </div>
                       <button onClick={() => {

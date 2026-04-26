@@ -33,7 +33,7 @@ export default function LienzoAnalitico({ esPro, setMostrarPaywall, cliente, usu
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cliente, usuarioActual]);
 
-  async function cargarRadarGeneral() {
+  const cargarRadarGeneral = async () => {
     try {
       const token = await usuarioActual.getIdToken();
       const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/metricas/radar/${cliente.id}`, {
