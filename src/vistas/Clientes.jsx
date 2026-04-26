@@ -5,7 +5,7 @@ import { auth } from '../firebase';
 import { sendPasswordResetEmail } from 'firebase/auth'; 
 import { io } from 'socket.io-client';
 import jsPDF from 'jspdf';
-import { ModalNuevaNota, ModalAsignarPlantilla, ModalNuevoCliente, ModalCoachboardLive, ModalCentroRendimiento } from '../componentes/ModalesClientes';
+import { ModalNuevaNota, ModalAsignarPlantilla, ModalNuevoCliente, ModalCoachboardLive, ModalCentroRendimiento, ModalCalculadora } from '../componentes/ModalesClientes';
 
 export default function Clientes({ 
   planActual, listaClientes, clienteSeleccionado, setClienteSeleccionado, 
@@ -45,6 +45,7 @@ export default function Clientes({
   const [sessionLiveSeleccionada, setSessionLiveSeleccionada] = useState(null);
   
   const [mostrarModalHistorial, setMostrarModalHistorial] = useState(false);
+  const [mostrarModalCalculadora, setMostrarModalCalculadora] = useState(false);
 
   useEffect(() => {
     if (listaClientes.length > 0) {
@@ -297,7 +298,7 @@ export default function Clientes({
                         semaforoFatiga.estado === 'Amarillo' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
                         'bg-red-500/10 text-red-400 border-red-500/30'
                       }`}>
-                        {semaforoFatiga.estado === 'Verde' ? '🟢' : semaforoFatiga.estado === 'Amarillo' ? '🟡' : '🔴'} Fatiga: {semaforoFatiga.puntuacion}%
+                        {semaforoFatiga.estado === 'Verde' ? '🟢' : semaforoFatiga.estado === 'Amarillo' ? '🟡' : '🔴'} Fatiga: {100 - semaforoFatiga.puntuacion}%
                       </span>
                     )}
                   </div>
@@ -421,9 +422,14 @@ export default function Clientes({
              abrirParaAnalizar={abrirParaAnalizar}
              planDeEntrenamientoJSX={
                <div className="flex flex-col gap-4">
-                 <button onClick={() => setMostrarModalHistorial(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 border border-blue-500/50 text-white py-3 rounded-2xl font-bold transition flex items-center justify-center gap-2 text-sm shadow-lg shadow-blue-500/20 hover:from-blue-500 hover:to-indigo-500">
-                    <span>🏆</span> Centro de Rendimiento
-                 </button>
+                 <div className="flex gap-4">
+                   <button onClick={() => setMostrarModalHistorial(true)} className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 border border-blue-500/50 text-white py-3 rounded-2xl font-bold transition flex items-center justify-center gap-2 text-sm shadow-lg shadow-blue-500/20 hover:from-blue-500 hover:to-indigo-500">
+                      <span>🏆</span> Centro de Rendimiento
+                   </button>
+                   <button onClick={() => setMostrarModalCalculadora(true)} className="flex-1 bg-gradient-to-r from-amber-500 to-orange-600 border border-amber-500/50 text-white py-3 rounded-2xl font-bold transition flex items-center justify-center gap-2 text-sm shadow-lg shadow-amber-500/20 hover:from-amber-400 hover:to-orange-500">
+                      <span>🧮</span> Calculadora
+                   </button>
+                 </div>
                  {rutinasDelCliente.map(rutina => (
                    <div key={rutina.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 flex flex-col shadow-lg animate-in zoom-in duration-300 hover:border-emerald-500/50 transition-all">
                      <div className="flex justify-between items-center mb-3">
@@ -472,8 +478,13 @@ export default function Clientes({
 
       <ModalCentroRendimiento 
         mostrarModalHistorial={mostrarModalHistorial} setMostrarModalHistorial={setMostrarModalHistorial} 
-        entrenamientosRecientes={entrenamientosRecientes} rutinasDelCliente={rutinasDelCliente} 
-        abrirParaAnalizar={abrirParaAnalizar} mostrarAlerta={mostrarAlerta} 
+        rutinasDelCliente={rutinasDelCliente} 
+        mostrarAlerta={mostrarAlerta} 
+        cliente={clienteSeleccionado} usuarioActual={usuarioActual} catalogoEjercicios={catalogoEjercicios}
+      />
+
+      <ModalCalculadora 
+        mostrarModalCalculadora={mostrarModalCalculadora} setMostrarModalCalculadora={setMostrarModalCalculadora}
         cliente={clienteSeleccionado} usuarioActual={usuarioActual} catalogoEjercicios={catalogoEjercicios}
       />
     </>
