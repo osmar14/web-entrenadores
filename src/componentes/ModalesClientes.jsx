@@ -155,6 +155,11 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
   const [mes1, setMes1] = useState('');
   const [mes2, setMes2] = useState('');
   const [cargandoComparativa, setCargandoComparativa] = useState(false);
+  const [ultimosPorDia, setUltimosPorDia] = useState([]);
+  const [cargandoUltimos, setCargandoUltimos] = useState(false);
+  const [historialMes, setHistorialMes] = useState([]);
+  const [verHistorialMes, setVerHistorialMes] = useState(false);
+  const [cargandoMes, setCargandoMes] = useState(false);
 
   useEffect(() => {
     const hoy = new Date();
@@ -165,6 +170,45 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
     setMes2(m1);
   }, []);
 
+  // Cargar últimos entrenamientos por día cuando se abre el modal
+  useEffect(() => {
+    if (mostrarModalHistorial && cliente && usuarioActual && rutinasDelCliente.length > 0) {
+      cargarUltimosPorDia();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mostrarModalHistorial, cliente]);
+
+  const cargarUltimosPorDia = async () => {
+    setCargandoUltimos(true);
+    try {
+      const token = await usuarioActual.getIdToken();
+      const headers = { 'Authorization': `Bearer ${token}` };
+      const allDias = [];
+      for (const rutina of rutinasDelCliente) {
+        const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/progreso/ultimos-por-dia/${cliente.id}/${rutina.id}`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          allDias.push(...data.map(d => ({ ...d, rutina_nombre: rutina.nombre, rutina_id: rutina.id })));
+        }
+      }
+      setUltimosPorDia(allDias);
+    } catch (e) { console.error("Error ultimos-por-dia", e); }
+    setCargandoUltimos(false);
+  };
+
+  const cargarHistorialMes = async () => {
+    setCargandoMes(true);
+    try {
+      const token = await usuarioActual.getIdToken();
+      const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/progreso/historial-mes/${cliente.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setHistorialMes(await res.json());
+    } catch (e) { console.error("Error historial-mes", e); }
+    setCargandoMes(false);
+    setVerHistorialMes(true);
+  };
+
   const cargarComparativa = async () => {
     if (!mes1 || !mes2 || !cliente || !usuarioActual) return;
     setCargandoComparativa(true);
@@ -173,11 +217,17 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
       const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/metricas/comparativa/${cliente.id}?mes1=${mes1}&mes2=${mes2}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) {
-        setDatosComparativa(await res.json());
-      }
+      if (res.ok) setDatosComparativa(await res.json());
     } catch (e) { console.error("Error comparativa", e); }
     setCargandoComparativa(false);
+  };
+
+  const getColorSerie = (tipo) => {
+    switch (tipo) {
+      case 'Calentamiento': return 'bg-orange-500/10 border-orange-500/30 text-orange-400';
+      case 'Dropset': case 'Drop Set': return 'bg-purple-500/10 border-purple-500/30 text-purple-400';
+      default: return 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400';
+    }
   };
 
   const CustomTooltipBar = ({ active, payload, label }) => {
@@ -196,105 +246,159 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
     return null;
   };
 
+  // Agrupar historial mensual por fecha
+  const historialMesAgrupado = {};
+  historialMes.forEach(r => {
+    const fecha = new Date(r.dia_entrenamiento).toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric' });
+    if (!historialMesAgrupado[fecha]) historialMesAgrupado[fecha] = {};
+    const ej = r.ejercicio_nombre || 'Ejercicio';
+    if (!historialMesAgrupado[fecha][ej]) historialMesAgrupado[fecha][ej] = [];
+    historialMesAgrupado[fecha][ej].push(r);
+  });
+
   if (!mostrarModalHistorial) return null;
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[100] p-4">
-      <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl w-full max-w-7xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in duration-200">
+      <div className="bg-zinc-900 border border-zinc-800 p-6 md:p-8 rounded-3xl w-full max-w-7xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in duration-200">
         <div className="flex justify-between items-center mb-6 shrink-0">
-          <h2 className="text-3xl font-extrabold text-white flex items-center gap-3">
+          <h2 className="text-2xl md:text-3xl font-extrabold text-white flex items-center gap-3">
             <span className="text-blue-500">🏆</span> Centro de Rendimiento
           </h2>
-          <button onClick={() => setMostrarModalHistorial(false)} className="w-10 h-10 rounded-full bg-zinc-800 text-zinc-400 hover:text-white transition text-lg flex items-center justify-center">✕</button>
+          <button onClick={() => { setMostrarModalHistorial(false); setVerHistorialMes(false); }} className="w-10 h-10 rounded-full bg-zinc-800 text-zinc-400 hover:text-white transition text-lg flex items-center justify-center">✕</button>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
-
-          {/* COLUMNA IZQUIERDA: Historial y Comparativas */}
-          <div className="lg:w-2/3 flex flex-col gap-6 h-full">
-
-            {/* HISTORIAL TOP */}
-            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 shadow-inner shrink-0 max-h-64 overflow-y-auto custom-scrollbar">
-              <h3 className="text-lg font-black text-white mb-4">⏱️ Historial de Sesiones</h3>
-              <div className="space-y-3">
-                {entrenamientosRecientes.length === 0 ? (
-                  <div className="text-center py-4 opacity-50"><p className="text-zinc-500">No hay entrenamientos recientes.</p></div>
-                ) : (
-                  entrenamientosRecientes.map((ent, idx) => (
-                    <div key={idx} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex justify-between items-center hover:border-zinc-700 transition">
-                      <div className="flex flex-col flex-1">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-sm font-bold text-white">{ent.rutina_nombre || 'Rutina Eliminada'}</span>
-                          {/* Etiqueta que muestra si fue Día de Brazo, Pierna, etc. */}
-                          <span className="bg-blue-500/10 text-blue-400 border border-blue-500/30 text-[9px] uppercase font-black px-2 py-0.5 rounded-md">
-                            {ent.dia_nombre || 'General'}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-zinc-500 font-medium mb-1 line-clamp-1">{ent.ejercicios || 'Sin detalle de ejercicios'}</p>
-                        <span className="text-[9px] text-zinc-600 uppercase tracking-tighter">
-                          {new Date(ent.dia_entrenamiento || ent.fecha).toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric' })}
-                        </span>
-                      </div>
-                      <button onClick={() => {
-                        const rut = rutinasDelCliente.find(r => r.id === ent.rutina_id);
-                        if (rut) { setMostrarModalHistorial(false); abrirParaAnalizar(rut); }
-                        else mostrarAlerta('Rutina no encontrada', 'error');
-                      }} className="text-blue-400 text-xs font-bold bg-blue-500/10 px-4 py-2 rounded-lg hover:bg-blue-500/20 transition border border-blue-500/20">Ver Detalle</button>
-                    </div>
-                  ))
-                )}
-              </div>
+        {/* Vista: Historial Mensual Completo */}
+        {verHistorialMes ? (
+          <div className="flex flex-col flex-1 min-h-0">
+            <div className="flex items-center gap-3 mb-4 shrink-0">
+              <button onClick={() => setVerHistorialMes(false)} className="text-zinc-400 hover:text-white text-sm font-bold flex items-center gap-1 transition">← Volver</button>
+              <h3 className="text-lg font-black text-white">📅 Historial Completo (Último Mes)</h3>
             </div>
-
-            {/* COMPARADOR BOTTOM */}
-            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 shadow-inner flex-1 flex flex-col min-h-0">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
-                <div>
-                  <h3 className="text-lg font-black text-white">⚖️ Generador de Comparativas</h3>
-                  <p className="text-xs text-zinc-500">Compara el volumen mensual por zona muscular.</p>
+            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">
+              {Object.keys(historialMesAgrupado).length === 0 ? (
+                <div className="text-center py-10 opacity-50"><p className="text-zinc-500">No hay datos en los últimos 30 días.</p></div>
+              ) : Object.entries(historialMesAgrupado).map(([fecha, ejercicios]) => (
+                <div key={fecha} className="bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden">
+                  <div className="bg-zinc-900 px-5 py-3 border-b border-zinc-800 flex items-center gap-3">
+                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
+                    <span className="font-bold text-white">{fecha}</span>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    {Object.entries(ejercicios).map(([nombreEj, series]) => (
+                      <div key={nombreEj} className="bg-zinc-900/50 p-3 rounded-xl border border-zinc-800/50">
+                        <p className="text-xs font-black text-blue-400 mb-2">{nombreEj}</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {series.map((s, i) => (
+                            <div key={i} className={`px-2 py-1.5 rounded-lg border text-xs ${getColorSerie(s.tipo_serie)}`}>
+                              <span className="font-black">S{s.serie_numero}</span> · {s.peso_kg}kg × {s.repeticiones} {s.rir && <span className="opacity-60">RIR {s.rir}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2 bg-zinc-900 p-2 rounded-xl border border-zinc-800">
-                  <input type="month" value={mes1} onChange={(e) => setMes1(e.target.value)} className="bg-zinc-950 text-white text-xs px-2 py-1.5 rounded outline-none border border-zinc-700" />
-                  <input type="month" value={mes2} onChange={(e) => setMes2(e.target.value)} className="bg-zinc-950 text-white text-xs px-2 py-1.5 rounded outline-none border border-zinc-700" />
-                  <button onClick={cargarComparativa} disabled={cargandoComparativa} className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-1.5 rounded-lg transition">
-                    {cargandoComparativa ? '...' : 'Comparar'}
+              ))}
+            </div>
+          </div>
+        ) : (
+          /* Vista principal */
+          <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
+            <div className="lg:w-2/3 flex flex-col gap-6 h-full">
+
+              {/* ÚLTIMOS ENTRENAMIENTOS POR DÍA */}
+              <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-5 shadow-inner shrink-0 max-h-72 overflow-y-auto custom-scrollbar">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-black text-white flex items-center gap-2">⏱️ Última Sesión por Día</h3>
+                  <button onClick={cargarHistorialMes} disabled={cargandoMes} className="bg-blue-600/10 text-blue-400 border border-blue-500/20 hover:bg-blue-600/20 px-3 py-1.5 rounded-lg text-xs font-bold transition">
+                    {cargandoMes ? '...' : '📅 Ver Historial del Mes'}
                   </button>
                 </div>
-              </div>
 
-              <div className="flex-1 min-h-[200px]">
-                {datosComparativa.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center opacity-50">
-                    <span className="text-3xl mb-2">📊</span>
-                    <p className="text-xs font-bold text-zinc-400">Presiona Comparar para cargar datos</p>
+                {cargandoUltimos ? (
+                  <div className="text-center py-6"><p className="text-zinc-500 animate-pulse font-bold">Cargando sesiones...</p></div>
+                ) : ultimosPorDia.length === 0 ? (
+                  <div className="text-center py-6 opacity-50">
+                    <p className="text-zinc-500 text-sm">No hay entrenamientos registrados aún.</p>
+                    <p className="text-zinc-600 text-xs mt-1">Los datos aparecerán cuando el cliente registre sesiones.</p>
                   </div>
                 ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={datosComparativa} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                      <XAxis dataKey="grupo_muscular" stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} />
-                      <Tooltip content={<CustomTooltipBar />} cursor={{ fill: '#27272a', opacity: 0.4 }} />
-                      <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#a1a1aa' }} />
-                      <Bar name={`Mes ${mes1}`} dataKey="series_mes1" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                      <Bar name={`Mes ${mes2}`} dataKey="series_mes2" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <div className="space-y-3">
+                    {ultimosPorDia.map((dia, idx) => (
+                      <div key={idx} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="bg-blue-500/10 text-blue-400 border border-blue-500/30 text-[10px] uppercase font-black px-2 py-0.5 rounded-md">{dia.dia_nombre}</span>
+                            <span className="text-xs text-zinc-500">{dia.rutina_nombre}</span>
+                          </div>
+                          <span className="text-[10px] text-zinc-600 bg-zinc-950 px-2 py-1 rounded-md font-bold">
+                            {new Date(dia.ultima_fecha).toLocaleDateString('es-ES', { day:'numeric', month:'short' })}
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          {dia.ejercicios.map((ej, eIdx) => (
+                            <div key={eIdx} className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-white truncate flex-1">{ej.nombre}</span>
+                              <div className="flex gap-1.5 ml-2">
+                                {ej.series.map((s, sIdx) => (
+                                  <span key={sIdx} className={`text-[10px] px-1.5 py-0.5 rounded border font-bold ${getColorSerie(s.tipo_serie)}`}>
+                                    {s.peso_kg}×{s.repeticiones}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
+              </div>
+
+              {/* COMPARADOR */}
+              <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 shadow-inner flex-1 flex flex-col min-h-0">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+                  <div>
+                    <h3 className="text-lg font-black text-white">⚖️ Comparativas</h3>
+                    <p className="text-xs text-zinc-500">Volumen mensual por zona muscular.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 bg-zinc-900 p-2 rounded-xl border border-zinc-800">
+                    <input type="month" value={mes1} onChange={(e) => setMes1(e.target.value)} className="bg-zinc-950 text-white text-xs px-2 py-1.5 rounded outline-none border border-zinc-700" />
+                    <input type="month" value={mes2} onChange={(e) => setMes2(e.target.value)} className="bg-zinc-950 text-white text-xs px-2 py-1.5 rounded outline-none border border-zinc-700" />
+                    <button onClick={cargarComparativa} disabled={cargandoComparativa} className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-1.5 rounded-lg transition">
+                      {cargandoComparativa ? '...' : 'Comparar'}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 min-h-[200px]">
+                  {datosComparativa.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center opacity-50">
+                      <span className="text-3xl mb-2">📊</span>
+                      <p className="text-xs font-bold text-zinc-400">Presiona Comparar para cargar datos</p>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={datosComparativa} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                        <XAxis dataKey="grupo_muscular" stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} />
+                        <Tooltip content={<CustomTooltipBar />} cursor={{ fill: '#27272a', opacity: 0.4 }} />
+                        <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#a1a1aa' }} />
+                        <Bar name={`Mes ${mes1}`} dataKey="series_mes1" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                        <Bar name={`Mes ${mes2}`} dataKey="series_mes2" fill="#10b981" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
               </div>
             </div>
 
+            {/* COLUMNA DERECHA: CALCULADORA FUNCIONAL */}
+            <div className="lg:w-1/3 h-full">
+              <CalculadoraFuncional cliente={cliente} usuarioActual={usuarioActual} catalogoEjercicios={catalogoEjercicios} />
+            </div>
           </div>
-
-          {/* COLUMNA DERECHA: CALCULADORA FUNCIONAL */}
-          <div className="lg:w-1/3 h-full">
-            <CalculadoraFuncional
-              cliente={cliente}
-              usuarioActual={usuarioActual}
-              catalogoEjercicios={catalogoEjercicios}
-            />
-          </div>
-
-        </div>
+        )}
       </div>
     </div>
   );

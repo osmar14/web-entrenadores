@@ -36,7 +36,8 @@ export default function Clientes({
   const [feedbackCliente, setFeedbackCliente] = useState([]);
   const [entrenamientosRecientes, setEntrenamientosRecientes] = useState([]);
   const [fotosCliente, setFotosCliente] = useState([]);
-  const [tabNotas, setTabNotas] = useState('coach'); 
+  const [tabNotas, setTabNotas] = useState('coach');
+  const [semaforoFatiga, setSemaforoFatiga] = useState(null); 
 
   // 🔴 LIVE TRACKING
   const [liveSessions, setLiveSessions] = useState({});
@@ -116,6 +117,13 @@ export default function Clientes({
 
       const resFotos = await fetch(`https://backend-entrenadores-production.up.railway.app/api/fotos/${cliente_id}`, { headers: headersSeguros });
       if(resFotos.ok) setFotosCliente(await resFotos.json());
+
+      // Semáforo de Fatiga
+      try {
+        const resFatiga = await fetch(`https://backend-entrenadores-production.up.railway.app/api/metricas/semaforo-fatiga/${cliente_id}`, { headers: headersSeguros });
+        if(resFatiga.ok) setSemaforoFatiga(await resFatiga.json());
+        else setSemaforoFatiga(null);
+      } catch (e) { setSemaforoFatiga(null); }
     } catch (error) { console.error("Error", error); }
   };
 
@@ -281,7 +289,18 @@ export default function Clientes({
                 <div className="w-20 h-20 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center text-4xl font-black text-zinc-900 shadow-lg shrink-0">{clienteSeleccionado.nombre.charAt(0).toUpperCase()}</div>
                 <div>
                   <h2 className="text-2xl font-black text-white mb-1 leading-tight">{clienteSeleccionado.nombre}</h2>
-                  <span className="text-emerald-400 text-xs font-bold flex items-center gap-1">🟢 Activo</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-emerald-400 text-xs font-bold flex items-center gap-1">🟢 Activo</span>
+                    {semaforoFatiga && (
+                      <span title={semaforoFatiga.recomendacion} className={`text-[10px] font-black px-2 py-0.5 rounded-full border cursor-help transition ${
+                        semaforoFatiga.estado === 'Verde' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+                        semaforoFatiga.estado === 'Amarillo' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
+                        'bg-red-500/10 text-red-400 border-red-500/30'
+                      }`}>
+                        {semaforoFatiga.estado === 'Verde' ? '🟢' : semaforoFatiga.estado === 'Amarillo' ? '🟡' : '🔴'} Fatiga: {semaforoFatiga.puntuacion}%
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 shadow-inner">
@@ -402,7 +421,7 @@ export default function Clientes({
              abrirParaAnalizar={abrirParaAnalizar}
              planDeEntrenamientoJSX={
                <div className="flex flex-col gap-4">
-                 <button onClick={() => setMostrarModalHistorial(true)} className="bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white py-3 rounded-2xl font-bold transition flex items-center justify-center gap-2 text-sm shadow-lg hover:border-blue-500/50 hover:bg-zinc-800">
+                 <button onClick={() => setMostrarModalHistorial(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 border border-blue-500/50 text-white py-3 rounded-2xl font-bold transition flex items-center justify-center gap-2 text-sm shadow-lg shadow-blue-500/20 hover:from-blue-500 hover:to-indigo-500">
                     <span>🏆</span> Centro de Rendimiento
                  </button>
                  {rutinasDelCliente.map(rutina => (
