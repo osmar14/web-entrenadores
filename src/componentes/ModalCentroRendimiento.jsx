@@ -61,19 +61,34 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
           
           setEjerciciosPorDia(mapaDiaEjercicios);
           
-          // 2. Historial Mes
+          // 2. Historial Mes (query simple sin dia_nombre — lo resolvemos aquí con el mapa)
           const resMes = await fetch(`https://backend-entrenadores-production.up.railway.app/api/progreso/historial-mes/${cliente.id}`, { headers });
           if (resMes.ok) {
             const data = await resMes.json();
-            console.log('📊 Historial mes raw (primeros 3):', data.slice(0, 3));
-            const dataParseada = data.map(d => ({...d, dia_nombre: d.dia_nombre || 'Sin Día'}));
-            setHistorialMes(dataParseada);
+            console.log('📊 Historial mes recibido:', data.length, 'registros');
+            
+            // Resolver dia_nombre en el frontend usando el mapa de la rutina activa
+            const dataConDia = data.map(d => {
+              // Buscar en qué día está este ejercicio según la rutina activa
+              let diaResuelto = 'Sin Día';
+              for (const [dia, ejercicios] of Object.entries(mapaDiaEjercicios)) {
+                if (ejercicios.includes(d.ejercicio_id)) {
+                  diaResuelto = dia;
+                  break;
+                }
+              }
+              return { ...d, dia_nombre: diaResuelto };
+            });
+            
+            setHistorialMes(dataConDia);
             
             // Usar los días de la rutina activa como prioridad
-            let diasFinales = diasRutina.length > 0 ? diasRutina : [...new Set(dataParseada.map(d => d.dia_nombre).filter(Boolean))];
+            let diasFinales = diasRutina.length > 0 ? diasRutina : [...new Set(dataConDia.map(d => d.dia_nombre).filter(Boolean))];
             
-            console.log('📅 Días finales para botones:', diasFinales);
-            console.log('📋 dia_nombre únicos en historial:', [...new Set(dataParseada.map(d => d.dia_nombre))]);
+            console.log('📅 Días para botones:', diasFinales);
+            console.log('📋 Ejercicios resueltos por día:', Object.fromEntries(
+              diasFinales.map(dia => [dia, dataConDia.filter(d => d.dia_nombre === dia).length + ' registros'])
+            ));
             
             setDiasDisponibles(diasFinales);
             if (diasFinales.length > 0) setDiaSeleccionado(diasFinales[0]);
@@ -153,33 +168,16 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
     }
   };
 
-  // Filtrar y agrupar historial por el día seleccionado (solo las últimas 4 fechas de ese día)
+  // Filtrar y agrupar historial por el día seleccionado (solo las últimas 4 sesiones)
   const getEntrenamientosDia = () => {
     if (!diaSeleccionado) return [];
     
-    // Obtener los ejercicio_ids que pertenecen a este día según la rutina activa
-    const ejerciciosDelDia = ejerciciosPorDia[diaSeleccionado] || [];
+    // Filtrar por dia_nombre (ya resuelto en el frontend al cargar)
+    const historialDia = historialMes.filter(h => h.dia_nombre === diaSeleccionado);
     
-    // Filtrar historial: matchear por dia_nombre O por ejercicio_id del mapa de la rutina
-    const historialDia = historialMes.filter(h => {
-      // Match directo por dia_nombre
-      if (h.dia_nombre === diaSeleccionado) return true;
-      // Match por ejercicio_id si el historial tiene un dia_nombre genérico o no coincide
-      if (ejerciciosDelDia.length > 0 && ejerciciosDelDia.includes(h.ejercicio_id)) return true;
-      return false;
-    });
-    
-    if (historialDia.length === 0) {
-      console.log('🔍 No hay match para día:', diaSeleccionado, '| ejerciciosDelDia:', ejerciciosDelDia, '| historialMes tiene', historialMes.length, 'registros');
-      if (historialMes.length > 0) {
-        console.log('🔍 Ejemplo historial[0]:', { dia_nombre: historialMes[0].dia_nombre, ejercicio_id: historialMes[0].ejercicio_id, tipo: typeof historialMes[0].ejercicio_id });
-      }
-    }
-    
-    // Agrupar por fecha (DATE sin hora) para juntar todos los ejercicios de una misma sesión
+    // Agrupar por fecha para juntar todos los ejercicios de una misma sesión
     const porSesion = {};
     historialDia.forEach(r => {
-      // Agrupar SOLO por fecha (ignorar rutina_id para no separar ejercicios de la misma sesión)
       const sesionKey = r.dia_entrenamiento;
       if (!porSesion[sesionKey]) porSesion[sesionKey] = { fecha: r.dia_entrenamiento, rutina_nombre: r.rutina_nombre, ejercicios: {} };
       
@@ -189,9 +187,7 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
     });
 
     // Ordenar descendente y tomar las últimas 4
-    const sesionesOrdenadas = Object.values(porSesion).sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 4);
-    
-    return sesionesOrdenadas;
+    return Object.values(porSesion).sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 4);
   };
 
 
