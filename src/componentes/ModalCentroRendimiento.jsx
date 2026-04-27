@@ -5,8 +5,10 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
   const [historialMes, setHistorialMes] = useState([]);
   const [cargandoMes, setCargandoMes] = useState(false);
   const [datosAdherencia, setDatosAdherencia] = useState(null);
+  const [errorAdherencia, setErrorAdherencia] = useState(false);
   const [diasDisponibles, setDiasDisponibles] = useState([]);
   const [diaSeleccionado, setDiaSeleccionado] = useState('');
+  const [ejerciciosPorDia, setEjerciciosPorDia] = useState({}); // { "Día 1": [50, 49], "brazo": [45, 44, 55, 58] }
 
   // Progreso por Ejercicio (Combo Chart)
   const [ejercicioSeleccionado, setEjercicioSeleccionado] = useState('');
@@ -26,42 +28,70 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
     if (mostrarModalHistorial && cliente && usuarioActual) {
       const fetchData = async () => {
         setCargandoMes(true);
+        setErrorAdherencia(false);
         try {
           const token = await usuarioActual.getIdToken();
           const headers = { 'Authorization': `Bearer ${token}` };
           
-          // Historial Mes
+          // 1. Obtener los días y ejercicios de la rutina activa PRIMERO
+          let mapaDiaEjercicios = {}; // { "Día 1": [50, 49], "brazo": [45, 44] }
+          let diasRutina = [];
+          
+          if (rutinasDelCliente && rutinasDelCliente.length > 0) {
+              try {
+                  const rutinaActivaId = rutinasDelCliente[0].id;
+                  const resRutina = await fetch(`https://backend-entrenadores-production.up.railway.app/api/rutina-ejercicios/${rutinaActivaId}`, { headers });
+                  if (resRutina.ok) {
+                      const ejerciciosRutina = await resRutina.json();
+                      ejerciciosRutina.forEach(ej => {
+                          const dia = ej.dia_nombre || 'Sin Día';
+                          if (!mapaDiaEjercicios[dia]) mapaDiaEjercicios[dia] = [];
+                          if (!mapaDiaEjercicios[dia].includes(ej.ejercicio_id)) {
+                              mapaDiaEjercicios[dia].push(ej.ejercicio_id);
+                          }
+                      });
+                      diasRutina = Object.keys(mapaDiaEjercicios);
+                  }
+              } catch(e) { console.warn('No se pudo obtener ejercicios de rutina activa', e); }
+          }
+          
+          setEjerciciosPorDia(mapaDiaEjercicios);
+          
+          // 2. Historial Mes
           const resMes = await fetch(`https://backend-entrenadores-production.up.railway.app/api/progreso/historial-mes/${cliente.id}`, { headers });
           if (resMes.ok) {
             const data = await resMes.json();
-            const dataParseada = data.map(d => ({...d, dia_nombre: d.dia_nombre || 'Historial General'}));
+            const dataParseada = data.map(d => ({...d, dia_nombre: d.dia_nombre || 'Sin Día'}));
             setHistorialMes(dataParseada);
             
-            // Extraer días únicos que tengan nombre (ej. "Día 1", "Brazo")
-            let diasUnicos = [...new Set(dataParseada.map(d => d.dia_nombre).filter(Boolean))];
+            // Usar los días de la rutina activa como prioridad
+            let diasFinales = diasRutina.length > 0 ? diasRutina : [...new Set(dataParseada.map(d => d.dia_nombre).filter(Boolean))];
             
-            // Intentar obtener los días reales de la rutina activa
-            if (rutinasDelCliente && rutinasDelCliente.length > 0) {
-                try {
-                    const rutinaActivaId = rutinasDelCliente[0].id;
-                    const resRutina = await fetch(`https://backend-entrenadores-production.up.railway.app/api/rutina-ejercicios/${rutinaActivaId}`, { headers });
-                    if (resRutina.ok) {
-                        const ejerciciosRutina = await resRutina.json();
-                        const diasRutina = [...new Set(ejerciciosRutina.map(e => e.dia_nombre).filter(Boolean))];
-                        if (diasRutina.length > 0) {
-                            diasUnicos = diasRutina;
-                        }
-                    }
-                } catch(e) {}
+            setDiasDisponibles(diasFinales);
+            if (diasFinales.length > 0) setDiaSeleccionado(diasFinales[0]);
+          } else {
+            // Si historial falla pero tenemos días de la rutina, igual mostrar los botones
+            if (diasRutina.length > 0) {
+              setDiasDisponibles(diasRutina);
+              setDiaSeleccionado(diasRutina[0]);
             }
-            
-            setDiasDisponibles(diasUnicos);
-            if (diasUnicos.length > 0) setDiaSeleccionado(diasUnicos[0]);
           }
 
-          // Adherencia
-          const resAdh = await fetch(`https://backend-entrenadores-production.up.railway.app/api/metricas/adherencia/${cliente.id}`, { headers });
-          if (resAdh.ok) setDatosAdherencia(await resAdh.json());
+          // 3. Adherencia (con manejo de error independiente)
+          try {
+            const resAdh = await fetch(`https://backend-entrenadores-production.up.railway.app/api/metricas/adherencia/${cliente.id}`, { headers });
+            if (resAdh.ok) {
+              setDatosAdherencia(await resAdh.json());
+            } else {
+              console.warn('Adherencia respondió con error:', resAdh.status);
+              setErrorAdherencia(true);
+              setDatosAdherencia({ porcentaje_adherencia: 0, dias_entrenados: 0, dias_totales: 0, fechas_activas: [] });
+            }
+          } catch (adhErr) {
+            console.error('Error al cargar adherencia:', adhErr);
+            setErrorAdherencia(true);
+            setDatosAdherencia({ porcentaje_adherencia: 0, dias_entrenados: 0, dias_totales: 0, fechas_activas: [] });
+          }
 
         } catch (e) { console.error("Error al cargar datos del Centro de Rendimiento", e); }
         setCargandoMes(false);
@@ -118,8 +148,17 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
   const getEntrenamientosDia = () => {
     if (!diaSeleccionado) return [];
     
-    // Filtrar por dia
-    const historialDia = historialMes.filter(h => h.dia_nombre === diaSeleccionado);
+    // Obtener los ejercicio_ids que pertenecen a este día según la rutina activa
+    const ejerciciosDelDia = ejerciciosPorDia[diaSeleccionado] || [];
+    
+    // Filtrar historial: matchear por dia_nombre O por ejercicio_id del mapa de la rutina
+    const historialDia = historialMes.filter(h => {
+      // Match directo por dia_nombre
+      if (h.dia_nombre === diaSeleccionado) return true;
+      // Match por ejercicio_id si el historial tiene un dia_nombre genérico o no coincide
+      if (ejerciciosDelDia.length > 0 && ejerciciosDelDia.includes(h.ejercicio_id)) return true;
+      return false;
+    });
     
     // Agrupar por fecha + rutina_id (para no mezclar si hizo 2 rutinas distintas el mismo día)
     const porSesion = {};
@@ -137,6 +176,7 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
     
     return sesionesOrdenadas;
   };
+
 
   if (!mostrarModalHistorial) return null;
 
@@ -158,6 +198,9 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
             {/* ADHERENCIA */}
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-inner shrink-0">
                <h3 className="text-lg font-black text-white flex items-center gap-2 mb-4">📅 Adherencia de Entrenamiento</h3>
+               {errorAdherencia && (
+                  <div className="text-center py-1 mb-2"><p className="text-amber-500 text-[10px] font-bold">⚠️ No se pudo cargar la adherencia completa. Mostrando datos parciales.</p></div>
+               )}
                {!datosAdherencia ? (
                   <div className="text-center py-4"><p className="text-zinc-600 animate-pulse font-bold">Cargando...</p></div>
                ) : (
