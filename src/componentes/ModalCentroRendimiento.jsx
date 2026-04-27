@@ -75,10 +75,14 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
             const data = await resMes.json();
             console.log('📊 Historial mes recibido:', data.length, 'registros');
             
-            // Resolver dia_nombre en el frontend usando el mapa combinado
+            // Resolver dia_nombre: primero intentamos usar el que viene directo del backend,
+            // si no viene (o es viejo), usamos el mapa combinado como respaldo
             const dataConDia = data.map(d => {
-              const clave = `${d.rutina_id}-${d.ejercicio_id}`;
-              let diaResuelto = mapaDiaEjercicios[clave] || 'Sin Día';
+              let diaResuelto = d.dia_nombre;
+              if (!diaResuelto) {
+                  const clave = `${d.rutina_id}-${d.ejercicio_id}`;
+                  diaResuelto = mapaDiaEjercicios[clave] || 'Sin Día';
+              }
               return { ...d, dia_nombre: diaResuelto };
             });
             
@@ -189,8 +193,8 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
       porSesion[sesionKey].ejercicios[ej].push(r);
     });
 
-    // Ordenar descendente y tomar las últimas 4
-    return Object.values(porSesion).sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 4);
+    // Ordenar descendente y tomar las últimas 2
+    return Object.values(porSesion).sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 2);
   };
 
 
@@ -256,7 +260,7 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
             {/* ÚLTIMAS SESIONES POR DÍA */}
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-inner flex-1 flex flex-col min-h-0">
               <h3 className="text-lg font-black text-white flex items-center gap-2 mb-2">⏱️ Últimas Sesiones por Día</h3>
-              <p className="text-xs text-zinc-400 mb-4">Selecciona un día de la rutina para ver los últimos 4 entrenamientos registrados y comparar el progreso.</p>
+              <p className="text-xs text-zinc-400 mb-4">Selecciona un día de la rutina para ver los últimos 2 entrenamientos registrados y comparar el progreso.</p>
               
               {/* Tabs de Días */}
               <div className="flex bg-zinc-950 border border-zinc-800 p-1 rounded-xl mb-4 shrink-0 gap-1 overflow-x-auto custom-scrollbar">
