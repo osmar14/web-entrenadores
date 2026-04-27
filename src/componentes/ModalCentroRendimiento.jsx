@@ -46,7 +46,7 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
                   
                   // Obtener ejercicios de TODAS las rutinas para poder mapear el historial histórico correctamente
                   const promesasRutinas = rutinasDelCliente.map(r => 
-                      fetch(`https://backend-entrenadores-production.up.railway.app/api/rutina-ejercicios/${r.id}`, { headers })
+                      fetch(`http://localhost:3000/api/rutina-ejercicios/${r.id}`, { headers })
                           .then(res => res.ok ? res.json() : [])
                           .then(ejercicios => ({ rutina_id: r.id, ejercicios }))
                           .catch(() => ({ rutina_id: r.id, ejercicios: [] }))
@@ -70,7 +70,7 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
           }
           
           // 2. Historial Mes (query simple sin dia_nombre — lo resolvemos aquí con el mapa)
-          const resMes = await fetch(`https://backend-entrenadores-production.up.railway.app/api/progreso/historial-mes/${cliente.id}`, { headers });
+          const resMes = await fetch(`http://localhost:3000/api/progreso/historial-mes/${cliente.id}`, { headers });
           if (resMes.ok) {
             const data = await resMes.json();
             console.log('📊 Historial mes recibido:', data.length, 'registros');
@@ -109,7 +109,7 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
 
           // 3. Adherencia (con manejo de error independiente)
           try {
-            const resAdh = await fetch(`https://backend-entrenadores-production.up.railway.app/api/metricas/adherencia/${cliente.id}`, { headers });
+            const resAdh = await fetch(`http://localhost:3000/api/metricas/adherencia/${cliente.id}`, { headers });
             if (resAdh.ok) {
               setDatosAdherencia(await resAdh.json());
             } else {
@@ -137,7 +137,7 @@ export function ModalCentroRendimiento({ mostrarModalHistorial, setMostrarModalH
         try {
           const token = await usuarioActual.getIdToken();
           const headers = { 'Authorization': `Bearer ${token}` };
-          const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/metricas/1rm/${cliente.id}/${ejercicioSeleccionado}`, { headers });
+          const res = await fetch(`http://localhost:3000/api/metricas/1rm/${cliente.id}/${ejercicioSeleccionado}`, { headers });
           if (res.ok) {
             const data = await res.json();
             // Agrupar por fecha
