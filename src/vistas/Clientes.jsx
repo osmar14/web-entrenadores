@@ -5,7 +5,7 @@ import { auth } from '../firebase';
 import { sendPasswordResetEmail } from 'firebase/auth'; 
 import { io } from 'socket.io-client';
 import jsPDF from 'jspdf';
-import { ModalNuevaNota, ModalAsignarPlantilla, ModalNuevoCliente, ModalCoachboardLive, ModalCentroRendimiento, ModalCalculadora } from '../componentes/ModalesClientes';
+import { ModalNuevaNota, ModalAsignarPlantilla, ModalNuevoCliente, ModalCoachboardLive, ModalRendimiento, ModalCalculadora } from '../componentes/ModalesClientes';
 
 export default function Clientes({ 
   planActual, listaClientes, clienteSeleccionado, setClienteSeleccionado, 
@@ -424,7 +424,7 @@ export default function Clientes({
                <div className="flex flex-col gap-4">
                  <div className="flex gap-4">
                    <button onClick={() => setMostrarModalHistorial(true)} className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 border border-blue-500/50 text-white py-3 rounded-2xl font-bold transition flex items-center justify-center gap-2 text-sm shadow-lg shadow-blue-500/20 hover:from-blue-500 hover:to-indigo-500">
-                      <span>🏆</span> Centro de Rendimiento
+                      <span>⚡</span> Rendimiento
                    </button>
                    <button onClick={() => setMostrarModalCalculadora(true)} className="flex-1 bg-gradient-to-r from-amber-500 to-orange-600 border border-amber-500/50 text-white py-3 rounded-2xl font-bold transition flex items-center justify-center gap-2 text-sm shadow-lg shadow-amber-500/20 hover:from-amber-400 hover:to-orange-500">
                       <span>🧮</span> Calculadora
@@ -476,11 +476,10 @@ export default function Clientes({
         sessionLiveSeleccionada={sessionLiveSeleccionada} 
       />
 
-      <ModalCentroRendimiento 
+      <ModalRendimiento 
         mostrarModalHistorial={mostrarModalHistorial} setMostrarModalHistorial={setMostrarModalHistorial} 
-        rutinasDelCliente={rutinasDelCliente} 
-        mostrarAlerta={mostrarAlerta} 
         cliente={clienteSeleccionado} usuarioActual={usuarioActual} catalogoEjercicios={catalogoEjercicios}
+        esPro={esPro} setMostrarPaywall={setMostrarPaywall}
       />
 
       <ModalCalculadora 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
-export { ModalCentroRendimiento } from './ModalCentroRendimiento';
+export { ModalRendimiento } from './ModalRendimiento';
 export { ModalCalculadora } from './ModalCalculadora';
 export function ModalNuevaNota({ mostrarModalNota, setMostrarModalNota, nuevaNota, setNuevaNota, handleGuardarNota }) {
   if (!mostrarModalNota) return null;
