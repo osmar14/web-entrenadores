@@ -22,6 +22,15 @@ export function ModalRendimiento({ mostrarModalHistorial, setMostrarModalHistori
     return coincideBusqueda && coincideMusculo;
   });
 
+  const getColorTipoSerieCard = (tipo) => {
+    switch (tipo) {
+      case 'Calentamiento': return 'bg-orange-500/10 border-orange-500/30 text-orange-400';
+      case 'Dropset': return 'bg-purple-500/10 border-purple-500/30 text-purple-400';
+      case 'Efectiva':
+      default: return 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400';
+    }
+  };
+
   // 1. Cargar rutinas y días al abrir
   useEffect(() => {
     if (mostrarModalHistorial && cliente && usuarioActual) {
@@ -208,8 +217,12 @@ export function ModalRendimiento({ mostrarModalHistorial, setMostrarModalHistori
                         <div className="bg-zinc-900 px-5 py-4 border-b border-zinc-800 flex items-center justify-between">
                           <div className="flex items-center gap-3">
                              <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]' : 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.6)]'}`}></div>
-                             <h4 className="font-bold text-white text-lg tracking-wide">
-                               {new Date(sesion.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                             <h4 className="font-bold text-white text-lg tracking-wide capitalize">
+                               {(() => {
+                                  const dateStr = sesion.fecha.includes('T') ? sesion.fecha : sesion.fecha + 'T00:00:00';
+                                  const d = new Date(dateStr);
+                                  return isNaN(d.getTime()) ? sesion.fecha : d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+                               })()}
                              </h4>
                           </div>
                           <span className="text-[10px] font-bold text-zinc-500 uppercase bg-zinc-800 px-2 py-1 rounded-md">{diaSeleccionado}</span>
@@ -220,16 +233,19 @@ export function ModalRendimiento({ mostrarModalHistorial, setMostrarModalHistori
                             <div key={ejNombre} className="bg-zinc-900/40 p-4 rounded-xl border border-zinc-800/50 hover:border-zinc-700 transition-colors">
                                <p className="text-sm font-black text-blue-400 mb-3 line-clamp-1">{ejNombre}</p>
                                <div className="grid grid-cols-2 gap-3 mb-3">
-                                 {series.map(set => (
-                                   <div key={set.serie} className="px-3 py-2 rounded-lg border flex flex-col transition-colors bg-emerald-500/10 border-emerald-500/30">
-                                     <span className="text-[9px] font-black uppercase tracking-wider mb-0.5 text-emerald-400">
-                                        Set {set.serie}
-                                     </span>
-                                     <span className="text-white font-medium text-sm flex items-center gap-1">
-                                       {set.peso} kg <span className="text-zinc-500 text-[10px] mx-1">x</span> {set.reps}
-                                     </span>
-                                   </div>
-                                 ))}
+                                 {series.map(set => {
+                                   const colorClases = getColorTipoSerieCard(set.tipo_serie);
+                                   return (
+                                     <div key={set.serie} className={`px-3 py-2 rounded-lg border flex flex-col transition-colors ${colorClases}`}>
+                                       <span className="text-[9px] font-black uppercase tracking-wider mb-0.5 opacity-90">
+                                          Set {set.serie} {set.tipo_serie && set.tipo_serie !== 'Efectiva' ? `(${set.tipo_serie})` : ''}
+                                       </span>
+                                       <span className="text-white font-medium text-sm flex items-center gap-1">
+                                         {set.peso} kg <span className="text-zinc-500 text-[10px] mx-1">x</span> {set.reps}
+                                       </span>
+                                     </div>
+                                   );
+                                 })}
                                </div>
                             </div>
                           ))}

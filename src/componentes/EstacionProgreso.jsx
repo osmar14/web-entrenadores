@@ -63,10 +63,12 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
         } else {
           // Si no hay historial, creamos inputs vacíos según el objetivo
           const numeroSeries = parseInt(ej.series_objetivo) || 1;
+          const tiposArray = ej.tipos_series ? ej.tipos_series.split(',') : [];
+
           setsArray = Array.from({ length: numeroSeries }, (_, i) => ({
             serie_numero: i + 1,
             peso: '', reps: '', rir: '',
-            tipo_serie: 'Efectiva',
+            tipo_serie: tiposArray[i] || 'Efectiva',
             peso_anterior: '', reps_anterior: '', rir_anterior: ''
           }));
         }

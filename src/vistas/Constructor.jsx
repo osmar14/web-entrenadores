@@ -9,6 +9,23 @@ export default function Constructor({
   ejerciciosDelDia, onDragEnd, quitarDelConstructor, actualizarEjercicio,
   esPro, setMostrarPaywall, setMostrarModalCatalogo
 }) {
+
+  const handleCambioTipoSerie = (ejId, idx, nuevoTipo, currentSeries) => {
+    const ej = ejerciciosDelDia.find(e => e.id_unico === ejId);
+    if(!ej) return;
+    const numSeries = parseInt(currentSeries) || 1;
+    const arrayTipos = ej.tipos_series ? ej.tipos_series.split(',') : Array.from({length: numSeries}, () => 'Efectiva');
+    while(arrayTipos.length < numSeries) arrayTipos.push('Efectiva');
+    arrayTipos[idx] = nuevoTipo;
+    actualizarEjercicio(ejId, 'tipos_series', arrayTipos.slice(0, numSeries).join(','));
+  };
+
+  const getTiposSeriesArray = (ej) => {
+    const num = parseInt(ej.series_objetivo) || 1;
+    const arr = ej.tipos_series ? ej.tipos_series.split(',') : [];
+    return Array.from({length: num}, (_, i) => arr[i] || 'Efectiva');
+  };
+
   return (
     <div className="mt-2 animate-in fade-in h-full flex flex-col">
       {/* CABECERA DEL CONSTRUCTOR */}
@@ -100,6 +117,24 @@ export default function Constructor({
                                     <input type="text" value={ejercicio.reps_objetivo} onChange={(e) => actualizarEjercicio(ejercicio.id_unico, 'reps_objetivo', e.target.value)} placeholder="Ej. 10" className="w-16 bg-zinc-950 border border-zinc-700 text-white text-center rounded-lg py-1 text-sm outline-none focus:border-blue-500" />
                                   </div>
                                 </div>
+                              </div>
+
+                              {/* Fila Series Tipos */}
+                              <div className="flex flex-wrap gap-2 mt-2 bg-zinc-950/50 p-2 rounded-lg border border-zinc-800/50">
+                                {getTiposSeriesArray(ejercicio).map((tipo, idx) => (
+                                  <div key={idx} className="flex flex-col items-center gap-1">
+                                    <span className="text-[8px] text-zinc-500 uppercase font-black">Set {idx+1}</span>
+                                    <select 
+                                      value={tipo} 
+                                      onChange={(e) => handleCambioTipoSerie(ejercicio.id_unico, idx, e.target.value, ejercicio.series_objetivo)}
+                                      className={`text-[10px] font-bold rounded px-1 py-0.5 outline-none cursor-pointer appearance-none text-center ${tipo === 'Calentamiento' ? 'bg-orange-500/20 text-orange-400' : tipo === 'Dropset' ? 'bg-purple-500/20 text-purple-400' : 'bg-emerald-500/20 text-emerald-400'}`}
+                                    >
+                                      <option value="Efectiva" className="bg-zinc-900 text-emerald-400">E</option>
+                                      <option value="Calentamiento" className="bg-zinc-900 text-orange-400">C</option>
+                                      <option value="Dropset" className="bg-zinc-900 text-purple-400">D</option>
+                                    </select>
+                                  </div>
+                                ))}
                               </div>
 
                               {/* 👑 FILA INFERIOR: ZONA PRO (MURO DE CRISTAL) */}
