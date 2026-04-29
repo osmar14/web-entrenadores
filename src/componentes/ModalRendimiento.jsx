@@ -20,7 +20,7 @@ export function ModalRendimiento({ mostrarModalHistorial, setMostrarModalHistori
       const fetchRutinasDias = async () => {
         try {
           const token = await usuarioActual.getIdToken();
-          const res = await fetch(`http://localhost:3000/api/rendimiento/rutinas-dias/${cliente.id}`, {
+          const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/rendimiento/rutinas-dias/${cliente.id}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           if (res.ok) {
@@ -60,7 +60,7 @@ export function ModalRendimiento({ mostrarModalHistorial, setMostrarModalHistori
         setCargandoSesiones(true);
         try {
           const token = await usuarioActual.getIdToken();
-          const res = await fetch(`http://localhost:3000/api/rendimiento/sesiones-dia/${cliente.id}/${rutinaSeleccionada}/${diaSeleccionado}`, {
+          const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/rendimiento/sesiones-dia/${cliente.id}/${rutinaSeleccionada}/${diaSeleccionado}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           if (res.ok) {
@@ -82,7 +82,7 @@ export function ModalRendimiento({ mostrarModalHistorial, setMostrarModalHistori
       const fetchProgreso = async () => {
         try {
           const token = await usuarioActual.getIdToken();
-          const res = await fetch(`http://localhost:3000/api/rendimiento/progreso-ejercicio/${cliente.id}/${ejercicioSeleccionado}`, {
+          const res = await fetch(`https://backend-entrenadores-production.up.railway.app/api/rendimiento/progreso-ejercicio/${cliente.id}/${ejercicioSeleccionado}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           if (res.ok) {
