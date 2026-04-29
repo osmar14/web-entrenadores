@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAlerta, vistaInicial, usuarioActual }) {
   const [ejerciciosProgreso, setEjerciciosProgreso] = useState([]);
   const [diasProgreso, setDiasProgreso] = useState([]);
+  const [diaProgresoActivo, setDiaProgresoActivo] = useState('');
+  const [notasSesion, setNotasSesion] = useState({});
   // Solo necesitamos el modo registro
   const [cargando, setCargando] = useState(true);
 
