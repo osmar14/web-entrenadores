@@ -18,7 +18,6 @@ export default function EstacionProgreso({ cliente, rutina, onVolver, mostrarAle
 
       const resHistorial = await fetch(`https://backend-entrenadores-production.up.railway.app/api/progreso/${cliente.id}/${rutina.id}`, { headers: headersSeguros });
       const datosHistorial = resHistorial.ok ? await resHistorial.json() : [];
-      setHistorialCliente(Array.isArray(datosHistorial) ? datosHistorial : []);
 
       const ejerciciosValidos = Array.isArray(datosEjercicios) ? datosEjercicios : [];
       const historialValido = Array.isArray(datosHistorial) ? datosHistorial : [];
