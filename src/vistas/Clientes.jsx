@@ -48,50 +48,65 @@ export default function Clientes({
   const [mostrarModalCalculadora, setMostrarModalCalculadora] = useState(false);
 
   useEffect(() => {
-    if (listaClientes.length > 0) {
+    if (listaClientes.length > 0 && usuarioActual) {
       const coachId = listaClientes[0].entrenador_id;
       if (!coachId) return;
 
-      const socket = io('https://backend-entrenadores-production.up.railway.app');
-      
-      socket.on('connect', () => {
-        socket.emit('unirse_como_coach', coachId);
-      });
-
-      socket.on('cliente_entrenando', (data) => {
-        setLiveSessions(prev => ({ ...prev, [data.clienteId]: { status: 'entrenando', data, updates: [] } }));
-        mostrarAlerta(`🔴 ${data.clienteNombre} ha comenzado a entrenar`, 'exito');
-      });
-
-      socket.on('progreso_en_vivo', (data) => {
-        setLiveSessions(prev => {
-          const session = prev[data.clienteId];
-          if (!session) return prev;
-          const newUpdates = [...session.updates];
-          const existingIdx = newUpdates.findIndex(u => u.ejercicio === data.ejercicio && u.set === data.set);
-          if (existingIdx >= 0) newUpdates[existingIdx] = data;
-          else newUpdates.push(data);
+      // Obtener token para autenticación del socket
+      const connectSocket = async () => {
+        try {
+          const token = await usuarioActual.getIdToken();
+          const socket = io('https://backend-entrenadores-production.up.railway.app', {
+            auth: { token }
+          });
           
-          if (sessionLiveSeleccionada && sessionLiveSeleccionada.data.clienteId === data.clienteId) {
-            setSessionLiveSeleccionada({ ...session, updates: newUpdates });
-          }
-          return { ...prev, [data.clienteId]: { ...session, updates: newUpdates } };
-        });
-      });
+          socket.on('connect', () => {
+            socket.emit('unirse_como_coach', coachId);
+          });
 
-      socket.on('cliente_termino', (data) => {
-        setLiveSessions(prev => {
-          const newSessions = { ...prev };
-          delete newSessions[data.clienteId];
-          return newSessions;
-        });
-        mostrarAlerta(`✅ ${data.clienteNombre} ha terminado su rutina`, 'exito');
-        setModalLiveVisible(false);
-      });
+          socket.on('cliente_entrenando', (data) => {
+            setLiveSessions(prev => ({ ...prev, [data.clienteId]: { status: 'entrenando', data, updates: [] } }));
+            mostrarAlerta(`🔴 ${data.clienteNombre} ha comenzado a entrenar`, 'exito');
+          });
 
-      return () => socket.disconnect();
+          socket.on('progreso_en_vivo', (data) => {
+            setLiveSessions(prev => {
+              const session = prev[data.clienteId];
+              if (!session) return prev;
+              const newUpdates = [...session.updates];
+              const existingIdx = newUpdates.findIndex(u => u.ejercicio === data.ejercicio && u.set === data.set);
+              if (existingIdx >= 0) newUpdates[existingIdx] = data;
+              else newUpdates.push(data);
+              
+              if (sessionLiveSeleccionada && sessionLiveSeleccionada.data.clienteId === data.clienteId) {
+                setSessionLiveSeleccionada({ ...session, updates: newUpdates });
+              }
+              return { ...prev, [data.clienteId]: { ...session, updates: newUpdates } };
+            });
+          });
+
+          socket.on('cliente_termino', (data) => {
+            setLiveSessions(prev => {
+              const newSessions = { ...prev };
+              delete newSessions[data.clienteId];
+              return newSessions;
+            });
+            mostrarAlerta(`✅ ${data.clienteNombre} ha terminado su rutina`, 'exito');
+            setModalLiveVisible(false);
+          });
+
+          return () => socket.disconnect();
+        } catch (err) {
+          console.error('Error conectando socket:', err);
+        }
+      };
+      
+      const cleanup = connectSocket();
+      return () => { cleanup?.then(fn => fn?.()); };
     }
-  }, [listaClientes]);
+  }, [listaClientes, usuarioActual]);
+
+
 
   const rutinasDelCliente = clienteSeleccionado ? todasLasRutinas.filter(r => r.cliente_id === clienteSeleccionado.id) : [];
   const emojisGym = ['🏋️‍♂️', '💪', '🔥', '⚡', '🦍', '🥇', '🦾'];

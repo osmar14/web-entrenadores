@@ -32,7 +32,11 @@ export default function CalculadoraRM({ onClose }) {
     { pct: 75, label: '75%' },
     { pct: 70, label: '70%' },
     { pct: 60, label: '60%' },
-    { pct: 50, label: '50%' }
+    { pct: 50, label: '50%' },
+    { pct: 40, label: '40%' },
+    { pct: 30, label: '30%' },
+    { pct: 20, label: '20%' },
+    { pct: 10, label: '10%' }
   ];
 
   return (
